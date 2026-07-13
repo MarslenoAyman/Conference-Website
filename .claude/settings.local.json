@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(npm install *)",
+      "Bash(curl -s -o /dev/null -w \"5173:%{http_code}\\\\n\" http://localhost:5173/api/instructions)",
+      "Bash(curl -s -o /dev/null -w \"4000:%{http_code}\\\\n\" http://localhost:4000/api/instructions)",
+      "Bash(netstat -ano)",
+      "Bash(npm view *)",
+      "Bash(npm run *)",
+      "Bash(pandoc -t markdown \"C:\\\\Users\\\\marti\\\\Downloads\\\\روحي مؤتمر ثانوي.docx\")",
+      "PowerShell(Get-Command pandoc -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command soffice -ErrorAction SilentlyContinue)",
+      "PowerShell(python --version)",
+      "Read(//c/Users/marti/AppData/Local/Temp/claude/C--Users-marti-Downloads-secondary-conference/60d4ad4f-42b0-4957-baf4-c8c9cfb5bdd9/scratchpad/docx_extract/**)",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}
