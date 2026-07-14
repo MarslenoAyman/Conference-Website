@@ -284,13 +284,6 @@ button {
   gap: 20px;
   margin-top: var(--space-lg);
 }
-@media (max-width: 720px) {
-  .grid-2,
-  .grid-teams {
-    grid-template-columns: 1fr;
-  }
-}
-
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -1471,24 +1464,36 @@ button {
   top: 6px;
 }
 
-@media (max-width: 760px) {
+/* ============================================================
+   Responsive breakpoints (mobile-first fall-back tiers).
+   The root font-size and --space-* scale fluidly via clamp(), so
+   most sizing adapts on its own; these tiers only re-flow layouts
+   that can't shrink gracefully on their own.
+     <= 1024px  tablets (portrait + landscape): nav -> hamburger
+     <=  768px  portrait tablets / large phones: wide rows stack
+     <=  600px  phones: single column, tighter spacing
+   ============================================================ */
+
+/* Tablets and below: collapse the horizontal nav into the hamburger
+   menu. The brand and the hamburger sit on one centered row (parallel),
+   the account name is pushed to the far right. */
+@media (max-width: 1024px) {
   .navbar-inner {
     flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 20px 14px 70px;
+    align-items: center;
+    gap: 8px;
+    padding: 12px var(--space-md);
     position: relative;
   }
   .hamburger-btn {
     display: flex;
-    position: absolute;
-    left: 20px;
-    top: 14px;
+    order: -1;
   }
   .nav-links {
     display: none;
     flex-direction: column;
     gap: 2px;
+    flex-basis: 100%;
   }
   .nav-links.open {
     display: flex;
@@ -1497,7 +1502,7 @@ button {
     inset-inline: 0;
     background: var(--bg);
     border-bottom: 1px solid var(--border);
-    padding: 10px 20px 16px;
+    padding: 10px var(--space-md) 16px;
     box-shadow: var(--shadow);
     z-index: 20;
   }
@@ -1511,6 +1516,7 @@ button {
     padding: 10px 14px;
   }
   .nav-user {
+    margin-inline-start: auto;
     padding-top: 0;
   }
   .nav-signout-desktop {
@@ -1525,13 +1531,45 @@ button {
     text-align: start;
     cursor: pointer;
   }
+  .explore-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Portrait tablets and large phones: stack the wide horizontal rows. */
+@media (max-width: 768px) {
+  .gallery-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gallery-text-col {
+    flex: none;
+  }
+  .preview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Phones: single column everywhere, tighter spacing. */
+@media (max-width: 600px) {
+  .page {
+    padding: var(--space-lg) var(--space-md) var(--space-2xl);
+  }
   .grid-2,
-  .grid-teams {
+  .grid-teams,
+  .explore-grid {
     grid-template-columns: 1fr;
   }
   .add-row {
     flex-direction: column;
     align-items: stretch;
+  }
+  .hero-banner {
+    min-height: 0;
+    padding: var(--space-xl) var(--space-md);
+  }
+  .hero-title {
+    font-size: 2rem;
   }
   .timeline-list {
     padding: var(--space-md) var(--space-sm);
@@ -1548,24 +1586,10 @@ button {
     flex-basis: 100%;
     min-width: 0;
   }
-  .hero-banner {
-    min-height: 0;
-    padding: var(--space-xl) var(--space-md);
+  .chair-slot {
+    min-width: 0;
   }
-  .hero-title {
-    font-size: 2rem;
-  }
-  .explore-grid {
-    grid-template-columns: 1fr;
-  }
-  .gallery-section {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .gallery-text-col {
-    flex: none;
-  }
-  .preview-grid {
-    grid-template-columns: 1fr;
+  .modal-overlay {
+    padding: 12px;
   }
 }
