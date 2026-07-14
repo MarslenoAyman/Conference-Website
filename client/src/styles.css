@@ -1543,22 +1543,28 @@ button {
   inset-inline-start: 23px;
 }
 .lang-toggle-group {
-  display: flex;
+  display: inline-flex;
+  align-items: stretch;
   border: 1px solid var(--border);
   border-radius: 999px;
-  overflow: hidden;
+  padding: 3px;
+  gap: 4px;
+  background: var(--card);
 }
 .lang-toggle-btn {
   flex: 1;
-  min-width: 88px;
+  min-width: 96px;
   border: none;
-  background: var(--card);
+  background: transparent;
   color: var(--ink);
-  padding: 8px 14px;
+  padding: 7px 14px;
   font-size: 0.844rem;
   font-weight: 600;
   cursor: pointer;
   text-align: center;
+  white-space: nowrap;
+  border-radius: 999px;
+  transition: background 0.15s;
 }
 .lang-toggle-btn.active {
   background: var(--olive-dark);
@@ -1770,6 +1776,9 @@ button {
   .add-row {
     flex-direction: column;
     align-items: stretch;
+  }
+  .settings-row {
+    flex-wrap: wrap;
   }
   .hero-banner {
     min-height: 0;
