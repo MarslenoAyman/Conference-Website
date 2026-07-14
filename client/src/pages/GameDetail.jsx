@@ -206,7 +206,7 @@ export default function GameDetail() {
 
       {game.type === "roster" ? (
         <>
-          <div className="grid-teams section-gap">
+          <div className="grid-teams roster-grid">
             {game.rosters.length === 0 ? (
               <p className="center-note">{t("gameDetail.noTeamsYet")}</p>
             ) : (

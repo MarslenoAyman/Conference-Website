@@ -537,6 +537,16 @@ button {
   gap: 16px;
   margin-bottom: 4px;
 }
+.game-detail-header {
+  margin-bottom: 0;
+}
+.game-detail-header .game-manager {
+  margin-bottom: 0;
+}
+/* Roster teams sit close under the game header instead of a full section gap. */
+.roster-grid {
+  margin-top: var(--space-sm);
+}
 .game-detail-header .game-icon {
   width: 56px;
   height: 56px;
