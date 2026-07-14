@@ -8,6 +8,7 @@ import Instructions from "./pages/Instructions.jsx";
 import Timeline from "./pages/Timeline.jsx";
 import Topics from "./pages/Topics.jsx";
 import Games from "./pages/Games.jsx";
+import GameDetail from "./pages/GameDetail.jsx";
 import Teams from "./pages/Teams.jsx";
 import Bonuses from "./pages/Bonuses.jsx";
 import Settings from "./pages/Settings.jsx";
@@ -73,6 +74,14 @@ export default function App() {
           element={
             <Protected>
               <Games />
+            </Protected>
+          }
+        />
+        <Route
+          path="/games/:id"
+          element={
+            <Protected>
+              <GameDetail />
             </Protected>
           }
         />

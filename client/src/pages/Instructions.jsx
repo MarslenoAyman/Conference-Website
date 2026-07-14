@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
+import Alert from "../components/Alert.jsx";
 
 const CIRCLE_COLORS = ["var(--olive)", "var(--gold)", "var(--maroon)", "var(--olive-dark)"];
 
@@ -61,13 +62,11 @@ export default function Instructions() {
 
   return (
     <div className="page">
-      <div className="eyebrow">{t("instructions.eyebrow")}</div>
       <h1 className="page-title">
         {t("instructions.titleStart")} <em>{t("instructions.titleEm")}</em>
       </h1>
-      <p className="page-subtitle">{t("instructions.subtitle")}</p>
 
-      {error && <div className="auth-error" style={{ marginTop: 20 }}>{error}</div>}
+      <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
       {loading ? (
         <p className="center-note">{t("common.loading")}</p>

@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import Alert from "../components/Alert.jsx";
 
 export default function Signup() {
   const { signup } = useAuth();
   const { t, tError } = useLanguage();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -17,7 +18,7 @@ export default function Signup() {
     setError("");
     setBusy(true);
     try {
-      await signup(name, phone);
+      await signup(username, password);
       navigate("/");
     } catch (err) {
       setError(tError(err.message));
@@ -31,21 +32,21 @@ export default function Signup() {
       <div className="auth-card">
         <h1>{t("signup.title")}</h1>
         <p className="sub">{t("signup.subtitle")}</p>
-        {error && <div className="auth-error">{error}</div>}
+        <Alert message={error} onDismiss={() => setError("")} />
         <form onSubmit={onSubmit}>
           <div className="field">
-            <label>{t("signup.name")}</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+            <label>{t("signup.username")}</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
           </div>
           <div className="field">
-            <label>{t("signup.phone")}</label>
+            <label>{t("signup.password")}</label>
             <input
-              type="tel"
-              inputMode="numeric"
-              placeholder="01xxxxxxxxx"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              type="password"
+              placeholder={t("signup.passwordHint")}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={4}
             />
           </div>
           <button className="btn btn-primary full-btn" disabled={busy}>

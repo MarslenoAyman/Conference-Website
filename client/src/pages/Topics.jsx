@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
+import Alert from "../components/Alert.jsx";
 
 const empty = { title: "", speaker: "", description: "" };
 
@@ -61,13 +62,11 @@ export default function Topics() {
 
   return (
     <div className="page">
-      <div className="eyebrow">{t("topics.eyebrow")}</div>
       <h1 className="page-title">
         {t("topics.titleStart")} <em>{t("topics.titleEm")}</em>
       </h1>
-      <p className="page-subtitle">{t("topics.subtitle")}</p>
 
-      {error && <div className="auth-error" style={{ marginTop: 20 }}>{error}</div>}
+      <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
       {loading ? (
         <p className="center-note">{t("common.loading")}</p>

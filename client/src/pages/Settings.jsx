@@ -7,9 +7,7 @@ export default function Settings() {
 
   return (
     <div className="page">
-      <div className="eyebrow">{t("settings.eyebrow")}</div>
       <h1 className="page-title">{t("settings.title")}</h1>
-      <p className="page-subtitle">{t("settings.subtitle")}</p>
 
       <div className="card settings-section">
         <div className="settings-row">

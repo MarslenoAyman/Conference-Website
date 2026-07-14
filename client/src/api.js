@@ -17,8 +17,8 @@ async function request(path, { method = "GET", body, token } = {}) {
 }
 
 export const api = {
-  login: (username, password) => request("/auth/login", { method: "POST", body: { username, password } }),
-  signup: (name, phone) => request("/auth/signup", { method: "POST", body: { name, phone } }),
+  login: (password) => request("/auth/login", { method: "POST", body: { password } }),
+  signup: (username, password) => request("/auth/signup", { method: "POST", body: { username, password } }),
   me: (token) => request("/auth/me", { token }),
 
   getInstructions: (token) => request("/instructions", { token }),
@@ -41,9 +41,20 @@ export const api = {
   deleteTopic: (token, id) => request(`/topics/${id}`, { method: "DELETE", token }),
 
   getGames: (token) => request("/games", { token }),
+  getGame: (token, id) => request(`/games/${id}`, { token }),
   addGame: (token, game) => request("/games", { method: "POST", body: game, token }),
   updateGame: (token, id, game) => request(`/games/${id}`, { method: "PUT", body: game, token }),
   deleteGame: (token, id) => request(`/games/${id}`, { method: "DELETE", token }),
+  addToRoster: (token, gameId, teamId, userId) =>
+    request(`/games/${gameId}/roster`, { method: "POST", body: { teamId, userId }, token }),
+  removeFromRoster: (token, gameId, userId) =>
+    request(`/games/${gameId}/roster/${userId}`, { method: "DELETE", token }),
+  addMatch: (token, gameId, round, players) =>
+    request(`/games/${gameId}/matches`, { method: "POST", body: { round, players }, token }),
+  setMatchWinner: (token, gameId, matchId, winnerSide) =>
+    request(`/games/${gameId}/matches/${matchId}`, { method: "PUT", body: { winnerSide }, token }),
+  deleteMatch: (token, gameId, matchId) =>
+    request(`/games/${gameId}/matches/${matchId}`, { method: "DELETE", token }),
 
   getTeams: (token) => request("/teams", { token }),
   addTeam: (token, name, color) => request("/teams", { method: "POST", body: { name, color }, token }),

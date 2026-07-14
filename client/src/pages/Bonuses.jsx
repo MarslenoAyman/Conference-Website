@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
+import Alert from "../components/Alert.jsx";
 
 export default function Bonuses() {
   const { token } = useAuth();
@@ -20,7 +21,11 @@ export default function Bonuses() {
     try {
       const reason = (reasons[member.id] || "").trim() || undefined;
       const { member: updated } = await api.adjustBonus(token, member.id, delta, reason);
-      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, bonus: updated.bonus } : m)));
+      setMembers((prev) =>
+        prev
+          .map((m) => (m.id === member.id ? { ...m, bonus: updated.bonus } : m))
+          .sort((a, b) => b.bonus - a.bonus || a.name.localeCompare(b.name))
+      );
     } catch (err) {
       setError(tError(err.message));
     }
@@ -29,13 +34,12 @@ export default function Bonuses() {
   return (
     <div className="page">
       <div className="bonus-header">
-        <h1 className="page-title" style={{ fontSize: 32, marginBottom: 0 }}>
+        <h1 className="page-title" style={{ fontSize: "2rem", marginBottom: 0 }}>
           {t("bonuses.title")} <em>{t("bonuses.titleEm")}</em>
         </h1>
-        <span className="bonus-hint">{t("bonuses.subtitle")}</span>
       </div>
 
-      {error && <div className="auth-error" style={{ marginTop: 20 }}>{error}</div>}
+      <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
       {loading ? (
         <p className="center-note">{t("common.loading")}</p>

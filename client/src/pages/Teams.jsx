@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
 import TeamEditModal from "../components/TeamEditModal.jsx";
+import Alert from "../components/Alert.jsx";
 
 const PALETTE = [
   "#5b6b4a",
@@ -110,13 +111,11 @@ export default function Teams() {
 
   return (
     <div className="page">
-      <div className="eyebrow">{t("teams.eyebrow")}</div>
       <h1 className="page-title">
         {t("teams.titleStart")} {t("teams.titleEm") && <em>{t("teams.titleEm")}</em>}
       </h1>
-      <p className="page-subtitle">{user.role === "none" ? t("teams.subtitleNone") : t("teams.subtitleFull")}</p>
 
-      {error && <div className="auth-error" style={{ marginTop: 20 }}>{error}</div>}
+      <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
       {loading ? (
         <p className="center-note">{t("common.loading")}</p>

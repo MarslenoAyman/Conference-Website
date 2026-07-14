@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import Alert from "../components/Alert.jsx";
 
 export default function Login() {
   const { login } = useAuth();
   const { t, tError } = useLanguage();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,7 +17,7 @@ export default function Login() {
     setError("");
     setBusy(true);
     try {
-      await login(username, password);
+      await login(password);
       navigate("/");
     } catch (err) {
       setError(tError(err.message));
@@ -31,17 +31,8 @@ export default function Login() {
       <div className="auth-card">
         <h1>{t("login.title")}</h1>
         <p className="sub">{t("login.subtitle")}</p>
-        {error && <div className="auth-error">{error}</div>}
+        <Alert message={error} onDismiss={() => setError("")} />
         <form onSubmit={onSubmit}>
-          <div className="field">
-            <label>{t("login.username")}</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
           <div className="field">
             <label>{t("login.password")}</label>
             <input
@@ -50,6 +41,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoFocus
             />
           </div>
           <button className="btn btn-primary full-btn" disabled={busy}>

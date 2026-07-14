@@ -85,10 +85,11 @@ const TOPICS = [
 ];
 
 const GAMES = [
-  ["كسر الجليد", "مساء اليوم الأول", "جولات سريعة لتتعارف الفرق على بعضها."],
-  ["مسابقة الكتاب المقدس", "صباح اليوم الثاني", "تتنافس الفرق في أسئلة عن الكتاب المقدس."],
-  ["تحدٍ خارجي", "بعد ظهر اليوم الثاني", "تحدٍ جماعي وحركي في الهواء الطلق."],
-  ["حلقة القصص حول النار", "ليل اليوم الثاني", "مشاركة الشهادات حول النار."],
+  ["كرة القدم", "football", "roster", "league", 1],
+  ["الكرة الطائرة", "volleyball", "roster", "league", 1],
+  ["الشطرنج", "chess", "duel", "league", 1],
+  ["البلياردو", "billiard", "matchup", "league", 1],
+  ["تنس الطاولة", "pingpong", "matchup", "league", 1],
 ];
 
 const TEAMS = [
@@ -113,14 +114,14 @@ async function seedIfEmpty() {
   }
 
   for (const [name, phone] of FULL_ACCESS) {
-    await pool.query("INSERT INTO users (id, name, phone, role) VALUES ($1, $2, $3, 'full')", [
+    await pool.query("INSERT INTO users (id, name, phone, password, role) VALUES ($1, $2, $3, $3, 'full')", [
       randomUUID(),
       name,
       phone,
     ]);
   }
   for (const [name, phone] of LIMITED_ACCESS) {
-    await pool.query("INSERT INTO users (id, name, phone, role) VALUES ($1, $2, $3, 'limited')", [
+    await pool.query("INSERT INTO users (id, name, phone, password, role) VALUES ($1, $2, $3, $3, 'limited')", [
       randomUUID(),
       name,
       phone,
@@ -158,12 +159,10 @@ async function seedIfEmpty() {
     ]);
   }
 
-  for (const [name, when, description] of GAMES) {
-    await pool.query("INSERT INTO games (id, name, when_text, description) VALUES ($1, $2, $3, $4)", [
-      randomUUID(),
-      name,
-      when,
-      description,
-    ]);
+  for (const [name, icon, type, format, teamSize] of GAMES) {
+    await pool.query(
+      "INSERT INTO games (id, name, icon, type, format, team_size) VALUES ($1, $2, $3, $4, $5, $6)",
+      [randomUUID(), name, icon, type, format, teamSize]
+    );
   }
 }

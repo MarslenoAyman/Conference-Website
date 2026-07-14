@@ -23,15 +23,15 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const login = useCallback(async (username, password) => {
-    const { token, user } = await api.login(username, password);
+  const login = useCallback(async (password) => {
+    const { token, user } = await api.login(password);
     localStorage.setItem("token", token);
     setToken(token);
     setUser(user);
   }, []);
 
-  const signup = useCallback(async (name, phone) => {
-    const { token, user } = await api.signup(name, phone);
+  const signup = useCallback(async (username, password) => {
+    const { token, user } = await api.signup(username, password);
     localStorage.setItem("token", token);
     setToken(token);
     setUser(user);

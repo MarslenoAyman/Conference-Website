@@ -24,7 +24,11 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="navbar-inner">
         <NavLink to="/" className="brand" onClick={() => setOpen(false)}>
-          <span className="brand-mark">+</span>
+          <span className="brand-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 3v18M7.5 8h9" />
+            </svg>
+          </span>
           {t("brand")}
         </NavLink>
 

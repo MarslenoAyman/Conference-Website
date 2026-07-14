@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
+import Alert from "../components/Alert.jsx";
 
 export default function Timeline() {
   const { user, token } = useAuth();
@@ -84,13 +85,11 @@ export default function Timeline() {
 
   return (
     <div className="page">
-      <div className="eyebrow">{t("timeline.eyebrow")}</div>
       <h1 className="page-title">
         {t("timeline.titleStart")} <em>{t("timeline.titleEm")}</em>
       </h1>
-      <p className="page-subtitle">{t("timeline.subtitle")}</p>
 
-      {error && <div className="auth-error" style={{ marginTop: 20 }}>{error}</div>}
+      <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
       {loading ? (
         <p className="center-note">{t("common.loading")}</p>

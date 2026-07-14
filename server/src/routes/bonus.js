@@ -13,7 +13,7 @@ router.get("/", async (req, res, next) => {
        FROM users u
        LEFT JOIN teams t ON u.team_id = t.id
        WHERE u.role = 'none'
-       ORDER BY u.name`
+       ORDER BY u.bonus DESC, u.name`
     );
     res.json({
       members: rows.map((r) => ({ id: r.id, name: r.name, phone: r.phone, bonus: r.bonus, teamName: r.team_name })),

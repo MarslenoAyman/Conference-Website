@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
+import { GAME_ICONS, GAME_ICON_COLORS, GAME_ICON_KEYS } from "../gameIcons.jsx";
+import Alert from "../components/Alert.jsx";
 
-const empty = { name: "", when: "", description: "" };
-const TAG_COLORS = ["var(--olive)", "var(--gold)", "var(--maroon)", "var(--olive-dark)"];
-const ICONS = ["🎲", "🧩", "🔥", "🎯", "🏆", "⛺"];
+const empty = { name: "", description: "", type: "roster", icon: "football" };
 
 export default function Games() {
   const { user, token } = useAuth();
@@ -36,9 +37,10 @@ export default function Games() {
     }
   }
 
-  function startEdit(game) {
+  function startEdit(game, e) {
+    e.preventDefault();
     setEditingId(game.id);
-    setEditDraft({ name: game.name, when: game.when, description: game.description });
+    setEditDraft({ name: game.name, description: game.description, type: game.type, icon: game.icon });
   }
 
   async function saveEdit(id) {
@@ -51,7 +53,8 @@ export default function Games() {
     }
   }
 
-  async function remove(id) {
+  async function remove(id, e) {
+    e.preventDefault();
     if (!confirm(t("common.confirmDeleteGeneric"))) return;
     try {
       await api.deleteGame(token, id);
@@ -63,33 +66,38 @@ export default function Games() {
 
   return (
     <div className="page">
-      <div className="eyebrow">{t("games.eyebrow")}</div>
       <h1 className="page-title">
         {t("games.titleStart")} <em>{t("games.titleEm")}</em>
       </h1>
-      <p className="page-subtitle">{t("games.subtitle")}</p>
 
-      {error && <div className="auth-error" style={{ marginTop: 20 }}>{error}</div>}
+      <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
       {loading ? (
         <p className="center-note">{t("common.loading")}</p>
       ) : (
         <div className="grid-2">
-          {games.map((game, idx) => (
-            <div className="game-card" key={game.id}>
+          {games.map((game) => (
+            <Link className="game-card" to={`/games/${game.id}`} key={game.id}>
               {editingId === game.id ? (
-                <>
+                <div onClick={(e) => e.preventDefault()}>
                   <div className="add-row" style={{ marginBottom: 10 }}>
                     <input
                       value={editDraft.name}
                       onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
                       placeholder={t("games.namePlaceholder")}
                     />
-                    <input
-                      value={editDraft.when}
-                      onChange={(e) => setEditDraft({ ...editDraft, when: e.target.value })}
-                      placeholder={t("games.whenPlaceholder")}
-                    />
+                    <select value={editDraft.type} onChange={(e) => setEditDraft({ ...editDraft, type: e.target.value })}>
+                      <option value="roster">{t("games.typeRoster")}</option>
+                      <option value="duel">{t("games.typeDuel")}</option>
+                      <option value="matchup">{t("games.typeMatchup")}</option>
+                    </select>
+                    <select value={editDraft.icon} onChange={(e) => setEditDraft({ ...editDraft, icon: e.target.value })}>
+                      {GAME_ICON_KEYS.map((key) => (
+                        <option key={key} value={key}>
+                          {t(`games.icon.${key}`)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <textarea
                     rows={2}
@@ -105,32 +113,29 @@ export default function Games() {
                       {t("common.cancel")}
                     </button>
                   </div>
-                </>
+                </div>
               ) : (
                 <>
                   <div className="game-top">
-                    <div className="game-icon">{ICONS[idx % ICONS.length]}</div>
-                    {game.when && (
-                      <span className="when-tag" style={{ background: TAG_COLORS[idx % TAG_COLORS.length] }}>
-                        {game.when}
-                      </span>
-                    )}
+                    <div className="game-icon" style={{ color: GAME_ICON_COLORS[game.icon] || GAME_ICON_COLORS.ball }}>
+                      {GAME_ICONS[game.icon] || GAME_ICONS.ball}
+                    </div>
                   </div>
                   <h3>{game.name}</h3>
                   <p>{game.description}</p>
                   {canEdit && (
                     <div className="card-actions">
-                      <button className="btn btn-sm" onClick={() => startEdit(game)}>
+                      <button className="btn btn-sm" onClick={(e) => startEdit(game, e)}>
                         {t("common.edit")}
                       </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => remove(game.id)}>
+                      <button className="btn btn-sm btn-danger" onClick={(e) => remove(game.id, e)}>
                         {t("common.delete")}
                       </button>
                     </div>
                   )}
                 </>
               )}
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -144,11 +149,18 @@ export default function Games() {
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
-            <input
-              placeholder={t("games.whenPlaceholder")}
-              value={draft.when}
-              onChange={(e) => setDraft({ ...draft, when: e.target.value })}
-            />
+            <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
+              <option value="roster">{t("games.typeRoster")}</option>
+              <option value="duel">{t("games.typeDuel")}</option>
+              <option value="matchup">{t("games.typeMatchup")}</option>
+            </select>
+            <select value={draft.icon} onChange={(e) => setDraft({ ...draft, icon: e.target.value })}>
+              {GAME_ICON_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`games.icon.${key}`)}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="add-row" style={{ marginTop: 10 }}>
             <textarea
