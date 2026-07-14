@@ -519,7 +519,15 @@ button {
 }
 .game-card h3 {
   font-size: 1.1875rem;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+}
+.game-manager {
+  font-size: 0.844rem;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+.game-manager strong {
+  color: var(--olive-dark);
 }
 
 /* Game detail */
@@ -655,6 +663,48 @@ button {
 .bracket-scroll {
   overflow-x: auto;
   padding-bottom: 8px;
+}
+
+/* Roster-game competition (League table / Cup bracket) */
+.competition-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.competition-title {
+  font-size: 1.5rem;
+}
+.competition-stats {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 0.906rem;
+  color: var(--ink-soft);
+}
+.competition-stats strong {
+  color: var(--olive-dark);
+}
+.competition-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.champion-banner {
+  background: color-mix(in srgb, var(--gold) 20%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border));
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 1.0625rem;
+  color: var(--ink);
+}
+.champion-banner strong {
+  color: var(--olive-dark);
 }
 
 /* Teams */

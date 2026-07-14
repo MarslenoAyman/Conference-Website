@@ -64,6 +64,9 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'roster';
 ALTER TABLE games ADD COLUMN IF NOT EXISTS icon TEXT NOT NULL DEFAULT 'ball';
 ALTER TABLE games ADD COLUMN IF NOT EXISTS format TEXT NOT NULL DEFAULT 'league';
 ALTER TABLE games ADD COLUMN IF NOT EXISTS team_size INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS manager TEXT NOT NULL DEFAULT '';
+-- Whether a roster game's League/Cup fixtures have been generated yet.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS fixtures_ready BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS game_rosters (
   game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
@@ -99,6 +102,15 @@ CREATE TABLE IF NOT EXISTS matches (
   winner_side TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Team-vs-team competition columns (roster games: Football etc.). For
+-- duel/matchup games these stay null and match_players is used instead.
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_a_id TEXT REFERENCES game_teams(id) ON DELETE CASCADE;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_b_id TEXT REFERENCES game_teams(id) ON DELETE CASCADE;
+-- Cup bracket wiring: where this match's winner advances to.
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS next_match_id TEXT REFERENCES matches(id) ON DELETE SET NULL;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS next_slot TEXT;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS bracket_pos INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS match_players (
   match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,

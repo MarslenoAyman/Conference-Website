@@ -32,6 +32,7 @@ export default function GameDetail() {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamColor, setNewTeamColor] = useState(PALETTE[0]);
+  const [chosenFormat, setChosenFormat] = useState("league");
 
   const canEdit = user.role === "full";
 
@@ -42,12 +43,23 @@ export default function GameDetail() {
     Promise.all(calls)
       .then(([g, usersRes]) => {
         setGame(g.game);
+        setChosenFormat(g.game.format || "league");
         if (usersRes) setAllUsers(usersRes.users || []);
       })
       .catch((err) => setError(tError(err.message)))
       .finally(() => setLoading(false));
   }
   useEffect(load, [id]);
+
+  async function generateFixtures() {
+    if (game.fixturesReady && !confirm(t("gameDetail.regenerateWarning"))) return;
+    try {
+      const { game: fresh } = await api.generateFixtures(token, id, chosenFormat);
+      setGame((prev) => ({ ...prev, ...fresh }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
 
   async function assignRoster(teamId, userId) {
     try {
@@ -154,6 +166,16 @@ export default function GameDetail() {
 
   const manageTeam = manageTeamId ? game.rosters.find((r) => r.teamId === manageTeamId) : null;
 
+  let cupChampion = null;
+  if (game.type === "roster" && game.format === "cup" && game.fixturesReady && game.matches?.length) {
+    const maxRound = Math.max(...game.matches.map((m) => m.round));
+    const final = game.matches.find((m) => m.round === maxRound);
+    if (final && final.status === "done" && final.winnerSide) {
+      const side = final.winnerSide === "a" ? final.sideA : final.sideB;
+      cupChampion = side[0]?.name || null;
+    }
+  }
+
   return (
     <div className="page">
       <Link to="/games" className="preview-more-link" style={{ display: "inline-block", marginBottom: 16 }}>
@@ -170,6 +192,11 @@ export default function GameDetail() {
           {game.description && (
             <p className="page-subtitle" style={{ margin: 0 }}>
               {game.description}
+            </p>
+          )}
+          {game.manager && (
+            <p className="game-manager" style={{ marginTop: 6 }}>
+              {t("games.responsible")}: <strong>{game.manager}</strong>
             </p>
           )}
         </div>
@@ -247,6 +274,95 @@ export default function GameDetail() {
               </div>
             </form>
           )}
+
+          <div className="section-gap">
+            <div className="competition-head">
+              <h2 className="competition-title">{t("gameDetail.competition")}</h2>
+              <div className="competition-stats">
+                <span>
+                  {t("gameDetail.teamsCount")}: <strong>{game.teamCount}</strong>
+                </span>
+                {game.fixturesReady && (
+                  <span>
+                    {t("gameDetail.system")}:{" "}
+                    <strong>{game.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {canEdit && game.teamCount >= 2 && (
+              <div className="competition-controls">
+                <div className="format-toggle">
+                  <button className={chosenFormat === "league" ? "active" : ""} onClick={() => setChosenFormat("league")}>
+                    {t("gameDetail.league")}
+                  </button>
+                  <button className={chosenFormat === "cup" ? "active" : ""} onClick={() => setChosenFormat("cup")}>
+                    {t("gameDetail.cup")}
+                  </button>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={generateFixtures}>
+                  {game.fixturesReady
+                    ? t("gameDetail.regenerate")
+                    : chosenFormat === "cup"
+                    ? t("gameDetail.generateCup")
+                    : t("gameDetail.generateLeague")}
+                </button>
+              </div>
+            )}
+
+            {game.teamCount < 2 ? (
+              <p className="empty-note">{t("gameDetail.needTwoTeams")}</p>
+            ) : !game.fixturesReady ? (
+              <p className="empty-note">{t("gameDetail.notGeneratedYet")}</p>
+            ) : game.format === "cup" ? (
+              <>
+                {cupChampion && (
+                  <div className="champion-banner">
+                    🏆 {t("gameDetail.champion")}: <strong>{cupChampion}</strong>
+                  </div>
+                )}
+                <BracketView
+                  matches={game.matches}
+                  canEdit={canEdit}
+                  onSetWinner={setMatchWinner}
+                  onDelete={() => {}}
+                  showDelete={false}
+                  t={t}
+                />
+              </>
+            ) : (
+              <>
+                <div className="card" style={{ marginBottom: 20 }}>
+                  <div className="modal-section-title" style={{ margin: "0 0 10px" }}>
+                    {t("gameDetail.standings")}
+                  </div>
+                  {game.standings.map((s, i) => (
+                    <div className="standings-row" key={s.id}>
+                      <span className="standings-rank">#{i + 1}</span>
+                      <span style={{ flex: 1 }}>{s.name}</span>
+                      <span>
+                        {s.wins}
+                        {t("gameDetail.winsAbbr")} - {s.losses}
+                        {t("gameDetail.lossesAbbr")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {game.matches.map((m) => (
+                  <MatchCard
+                    key={m.id}
+                    match={m}
+                    canEdit={canEdit}
+                    onSetWinner={(side) => setMatchWinner(m.id, side)}
+                    onDelete={() => {}}
+                    showDelete={false}
+                    t={t}
+                  />
+                ))}
+              </>
+            )}
+          </div>
         </>
       ) : (
         <div className="section-gap">
@@ -569,8 +685,9 @@ function MatchModal({ teamSize, format, allUsers, onCreated, onClose }) {
   );
 }
 
-function MatchCard({ match, canEdit, onSetWinner, onDelete, t }) {
-  const nameList = (side) => side.map((p) => p.name).join(" & ") || "—";
+function MatchCard({ match, canEdit, onSetWinner, onDelete, showDelete = true, t }) {
+  const nameList = (side) => side.map((p) => p.name).join(" & ") || t("gameDetail.awaiting");
+  const ready = match.sideA.length > 0 && match.sideB.length > 0;
   return (
     <div className={"match-card" + (match.status === "done" ? " done" : "")}>
       <div className="match-sides">
@@ -578,7 +695,7 @@ function MatchCard({ match, canEdit, onSetWinner, onDelete, t }) {
         <span className="match-vs">{t("gameDetail.vs")}</span>
         <div className={"match-side" + (match.winnerSide === "b" ? " winner" : "")}>{nameList(match.sideB)}</div>
       </div>
-      {canEdit && (
+      {canEdit && ready && (
         <div className="card-actions" style={{ marginTop: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <button className="btn btn-sm" onClick={() => onSetWinner("a")}>
             {t("gameDetail.sideAWins")}
@@ -591,16 +708,18 @@ function MatchCard({ match, canEdit, onSetWinner, onDelete, t }) {
               {t("gameDetail.resetMatch")}
             </button>
           )}
-          <button className="btn btn-sm btn-danger" onClick={onDelete}>
-            {t("common.delete")}
-          </button>
+          {showDelete && (
+            <button className="btn btn-sm btn-danger" onClick={onDelete}>
+              {t("common.delete")}
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function BracketView({ matches, canEdit, onSetWinner, onDelete, t }) {
+function BracketView({ matches, canEdit, onSetWinner, onDelete, showDelete = true, t }) {
   const rounds = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
   if (rounds.length === 0) return <p className="empty-note">{t("gameDetail.noMatchesYet")}</p>;
   return (
@@ -619,6 +738,7 @@ function BracketView({ matches, canEdit, onSetWinner, onDelete, t }) {
                 canEdit={canEdit}
                 onSetWinner={(side) => onSetWinner(m.id, side)}
                 onDelete={() => onDelete(m.id)}
+                showDelete={showDelete}
                 t={t}
               />
             ))}

@@ -6,7 +6,7 @@ import { api } from "../api.js";
 import { GAME_ICONS, GAME_ICON_BADGE_CLASS, GAME_ICON_KEYS } from "../gameIcons.jsx";
 import Alert from "../components/Alert.jsx";
 
-const empty = { name: "", description: "", type: "roster", icon: "football" };
+const empty = { name: "", description: "", type: "roster", icon: "football", manager: "" };
 
 export default function Games() {
   const { user, token } = useAuth();
@@ -27,7 +27,7 @@ export default function Games() {
   function startEdit(game, e) {
     e.preventDefault();
     setEditingId(game.id);
-    setEditDraft({ name: game.name, description: game.description, type: game.type, icon: game.icon });
+    setEditDraft({ name: game.name, description: game.description, type: game.type, icon: game.icon, manager: game.manager || "" });
   }
 
   async function saveEdit(id) {
@@ -92,6 +92,12 @@ export default function Games() {
                     value={editDraft.description}
                     onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
                   />
+                  <input
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: 8, marginTop: 8 }}
+                    placeholder={t("games.managerPlaceholder")}
+                    value={editDraft.manager}
+                    onChange={(e) => setEditDraft({ ...editDraft, manager: e.target.value })}
+                  />
                   <div className="card-actions">
                     <button className="btn btn-sm btn-primary" onClick={() => saveEdit(game.id)}>
                       {t("common.save")}
@@ -107,6 +113,11 @@ export default function Games() {
                     {GAME_ICONS[game.icon] || GAME_ICONS.ball}
                   </div>
                   <h3>{game.name}</h3>
+                  {game.manager && (
+                    <p className="game-manager">
+                      {t("games.responsible")}: <strong>{game.manager}</strong>
+                    </p>
+                  )}
                   <span className="open-link">{t("home.openLink")}</span>
                   {canEdit && (
                     <div className="card-actions">
