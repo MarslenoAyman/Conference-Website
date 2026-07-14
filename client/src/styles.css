@@ -1549,13 +1549,16 @@ button {
   overflow: hidden;
 }
 .lang-toggle-btn {
+  flex: 1;
+  min-width: 88px;
   border: none;
   background: var(--card);
   color: var(--ink);
-  padding: 8px 18px;
+  padding: 8px 14px;
   font-size: 0.844rem;
   font-weight: 600;
   cursor: pointer;
+  text-align: center;
 }
 .lang-toggle-btn.active {
   background: var(--olive-dark);
