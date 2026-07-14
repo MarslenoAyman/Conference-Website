@@ -61,6 +61,8 @@ export const api = {
     request(`/games/${gameId}/matches`, { method: "POST", body: { round, players }, token }),
   setMatchWinner: (token, gameId, matchId, winnerSide) =>
     request(`/games/${gameId}/matches/${matchId}`, { method: "PUT", body: { winnerSide }, token }),
+  saveMatchResult: (token, gameId, matchId, result) =>
+    request(`/games/${gameId}/matches/${matchId}`, { method: "PUT", body: result, token }),
   deleteMatch: (token, gameId, matchId) =>
     request(`/games/${gameId}/matches/${matchId}`, { method: "DELETE", token }),
 

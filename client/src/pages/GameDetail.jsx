@@ -33,6 +33,7 @@ export default function GameDetail() {
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamColor, setNewTeamColor] = useState(PALETTE[0]);
   const [chosenFormat, setChosenFormat] = useState("league");
+  const [resultMatch, setResultMatch] = useState(null);
 
   const canEdit = user.role === "full";
 
@@ -138,6 +139,15 @@ export default function GameDetail() {
     } catch (err) {
       setError(tError(err.message));
     }
+  }
+  async function saveResult(matchId, body) {
+    const result = await api.saveMatchResult(token, id, matchId, body);
+    setGame((prev) => ({
+      ...prev,
+      matches: result.matches,
+      standings: result.standings,
+      scorers: result.scorers ?? prev.scorers,
+    }));
   }
   async function deleteMatch(matchId) {
     if (!confirm(t("common.confirmDeleteGeneric"))) return;
@@ -324,45 +334,25 @@ export default function GameDetail() {
                 )}
                 <BracketView
                   matches={game.matches}
-                  canEdit={canEdit}
-                  onSetWinner={setMatchWinner}
-                  onDelete={() => {}}
-                  showDelete={false}
                   t={t}
+                  renderMatch={(m) => (
+                    <TeamMatchCard key={m.id} match={m} canEdit={canEdit} onEnter={() => setResultMatch(m)} t={t} />
+                  )}
                 />
               </>
             ) : (
               <>
-                <div className="card" style={{ marginBottom: 20 }}>
-                  <div className="modal-section-title" style={{ margin: "0 0 10px" }}>
-                    {t("gameDetail.standings")}
-                  </div>
-                  {game.standings.map((s, i) => (
-                    <div className="standings-row" key={s.id}>
-                      <span className="standings-rank">#{i + 1}</span>
-                      <span style={{ flex: 1 }}>{s.name}</span>
-                      <span>
-                        {s.wins}
-                        {t("gameDetail.winsAbbr")} - {s.losses}
-                        {t("gameDetail.lossesAbbr")}
-                      </span>
-                    </div>
+                <StandingsTable standings={game.standings} t={t} />
+                <div style={{ marginTop: 20 }}>
+                  {game.matches.map((m) => (
+                    <TeamMatchCard key={m.id} match={m} canEdit={canEdit} onEnter={() => setResultMatch(m)} t={t} />
                   ))}
                 </div>
-                {game.matches.map((m) => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    canEdit={canEdit}
-                    onSetWinner={(side) => setMatchWinner(m.id, side)}
-                    onDelete={() => {}}
-                    showDelete={false}
-                    t={t}
-                  />
-                ))}
               </>
             )}
           </div>
+
+          <TopScorers scorers={game.scorers} t={t} />
         </>
       ) : (
         <div className="section-gap">
@@ -393,7 +383,20 @@ export default function GameDetail() {
           )}
 
           {game.format === "cup" ? (
-            <BracketView matches={game.matches} canEdit={canEdit} onSetWinner={setMatchWinner} onDelete={deleteMatch} t={t} />
+            <BracketView
+              matches={game.matches}
+              t={t}
+              renderMatch={(m) => (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  canEdit={canEdit}
+                  onSetWinner={(side) => setMatchWinner(m.id, side)}
+                  onDelete={() => deleteMatch(m.id)}
+                  t={t}
+                />
+              )}
+            />
           ) : (
             <div>
               {game.matches.length === 0 ? (
@@ -457,6 +460,16 @@ export default function GameDetail() {
           allUsers={allUsers}
           onCreated={createMatch}
           onClose={() => setShowMatchModal(false)}
+        />
+      )}
+
+      {resultMatch && (
+        <ResultModal
+          match={resultMatch}
+          rosters={game.rosters}
+          format={game.format}
+          onSave={(body) => saveResult(resultMatch.id, body)}
+          onClose={() => setResultMatch(null)}
         />
       )}
     </div>
@@ -719,7 +732,7 @@ function MatchCard({ match, canEdit, onSetWinner, onDelete, showDelete = true, t
   );
 }
 
-function BracketView({ matches, canEdit, onSetWinner, onDelete, showDelete = true, t }) {
+function BracketView({ matches, renderMatch, t }) {
   const rounds = [...new Set(matches.map((m) => m.round))].sort((a, b) => a - b);
   if (rounds.length === 0) return <p className="empty-note">{t("gameDetail.noMatchesYet")}</p>;
   return (
@@ -729,21 +742,253 @@ function BracketView({ matches, canEdit, onSetWinner, onDelete, showDelete = tru
           <div className="bracket-round-title">
             {t("gameDetail.round")} {round}
           </div>
-          {matches
-            .filter((m) => m.round === round)
-            .map((m) => (
-              <MatchCard
-                key={m.id}
-                match={m}
-                canEdit={canEdit}
-                onSetWinner={(side) => onSetWinner(m.id, side)}
-                onDelete={() => onDelete(m.id)}
-                showDelete={showDelete}
-                t={t}
-              />
-            ))}
+          {matches.filter((m) => m.round === round).map((m) => renderMatch(m))}
         </div>
       ))}
     </div>
+  );
+}
+
+// Team-vs-team match card for a roster game (shows score + scorers + Enter result).
+function TeamMatchCard({ match, canEdit, onEnter, t }) {
+  const nameA = match.sideA[0]?.name || t("gameDetail.awaiting");
+  const nameB = match.sideB[0]?.name || t("gameDetail.awaiting");
+  const played = match.status === "done" && match.scoreA !== null && match.scoreA !== undefined;
+  const ready = match.sideA.length > 0 && match.sideB.length > 0;
+  const scorers = [...(match.scorersA || []), ...(match.scorersB || [])];
+  return (
+    <div className={"match-card" + (played ? " done" : "")}>
+      <div className="match-sides">
+        <div className={"match-side" + (match.winnerSide === "a" ? " winner" : "")}>{nameA}</div>
+        <span className="match-score">{played ? `${match.scoreA} - ${match.scoreB}` : t("gameDetail.vs")}</span>
+        <div className={"match-side" + (match.winnerSide === "b" ? " winner" : "")}>{nameB}</div>
+      </div>
+      {played && scorers.length > 0 && (
+        <div className="match-scorers">⚽ {scorers.map((s) => s.name).join(", ")}</div>
+      )}
+      {canEdit && ready && (
+        <div className="card-actions" style={{ marginTop: 10, justifyContent: "center" }}>
+          <button className="btn btn-sm" onClick={onEnter}>
+            {t("gameDetail.enterResult")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StandingsTable({ standings, t }) {
+  return (
+    <div className="standings-table-wrap">
+      <table className="standings-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th className="st-team">{t("gameDetail.colTeam")}</th>
+            <th>{t("gameDetail.colPlayed")}</th>
+            <th>{t("gameDetail.colWin")}</th>
+            <th>{t("gameDetail.colDraw")}</th>
+            <th>{t("gameDetail.colLoss")}</th>
+            <th>{t("gameDetail.colGF")}</th>
+            <th>{t("gameDetail.colGA")}</th>
+            <th>{t("gameDetail.colGD")}</th>
+            <th>🟨</th>
+            <th>🟥</th>
+            <th className="st-pts">{t("gameDetail.colPts")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.map((s, i) => (
+            <tr key={s.id}>
+              <td>{i + 1}</td>
+              <td className="st-team">{s.name}</td>
+              <td>{s.played}</td>
+              <td>{s.wins}</td>
+              <td>{s.draws}</td>
+              <td>{s.losses}</td>
+              <td>{s.gf}</td>
+              <td>{s.ga}</td>
+              <td>{s.gd > 0 ? `+${s.gd}` : s.gd}</td>
+              <td>{s.yellow}</td>
+              <td>{s.red}</td>
+              <td className="st-pts">{s.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TopScorers({ scorers, t }) {
+  return (
+    <div className="section-gap">
+      <h2 className="competition-title" style={{ marginBottom: 16 }}>
+        {t("gameDetail.topScorers")}
+      </h2>
+      {!scorers || scorers.length === 0 ? (
+        <p className="empty-note">{t("gameDetail.noScorersYet")}</p>
+      ) : (
+        <div className="card">
+          {scorers.map((s, i) => (
+            <div className="bonus-row" key={s.id}>
+              <span className="bonus-rank">{i === 0 ? "🏆" : `#${i + 1}`}</span>
+              <span className="bonus-name" style={{ flex: 1 }}>
+                {s.name}
+              </span>
+              <span className="bonus-count">
+                {s.goals} {t("gameDetail.goals")}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResultModal({ match, rosters, format, onSave, onClose }) {
+  const { t, tError } = useLanguage();
+  const teamA = match.sideA[0];
+  const teamB = match.sideB[0];
+  const playersA = rosters.find((r) => r.teamId === teamA?.id)?.players || [];
+  const playersB = rosters.find((r) => r.teamId === teamB?.id)?.players || [];
+
+  const [scoreA, setScoreA] = useState(String(match.scoreA ?? 0));
+  const [scoreB, setScoreB] = useState(String(match.scoreB ?? 0));
+  const [redA, setRedA] = useState(String(match.redA ?? 0));
+  const [yellowA, setYellowA] = useState(String(match.yellowA ?? 0));
+  const [redB, setRedB] = useState(String(match.redB ?? 0));
+  const [yellowB, setYellowB] = useState(String(match.yellowB ?? 0));
+  const [scorersA, setScorersA] = useState((match.scorersA || []).map((s) => s.id));
+  const [scorersB, setScorersB] = useState((match.scorersB || []).map((s) => s.id));
+  const [error, setError] = useState("");
+
+  const isLeague = format === "league";
+  const n = (v) => Number(v) || 0;
+
+  async function submit() {
+    if (format === "cup" && n(scoreA) === n(scoreB)) {
+      setError(t("gameDetail.drawNotAllowedCup"));
+      return;
+    }
+    const body = {
+      scoreA: n(scoreA),
+      scoreB: n(scoreB),
+      redA: n(redA),
+      yellowA: n(yellowA),
+      redB: n(redB),
+      yellowB: n(yellowB),
+      scorers: [
+        ...scorersA.filter(Boolean).map((userId) => ({ userId, side: "a" })),
+        ...scorersB.filter(Boolean).map((userId) => ({ userId, side: "b" })),
+      ],
+    };
+    try {
+      await onSave(body);
+      onClose();
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
+  async function reset() {
+    try {
+      await onSave({ scoreA: null });
+      onClose();
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
+  const numField = (label, val, set) => (
+    <div className="score-field">
+      <label>{label}</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={val}
+        onChange={(e) => set(e.target.value.replace(/[^0-9]/g, ""))}
+      />
+    </div>
+  );
+
+  const scorerPicker = (players, list, setList, teamName) => (
+    <div className="field">
+      <label>
+        {teamName} — {t("gameDetail.scorers")}
+      </label>
+      {players.length === 0 ? (
+        <p className="empty-note">{t("gameDetail.noPlayersOnTeam")}</p>
+      ) : (
+        <>
+          {list.map((uid, idx) => (
+            <div className="scorer-row" key={idx}>
+              <select value={uid} onChange={(e) => setList(list.map((v, i) => (i === idx ? e.target.value : v)))}>
+                {players.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <button className="btn btn-sm btn-danger" onClick={() => setList(list.filter((_, i) => i !== idx))}>
+                {t("common.delete")}
+              </button>
+            </div>
+          ))}
+          <button className="btn btn-sm" style={{ marginTop: 6 }} onClick={() => setList([...list, players[0].id])}>
+            + {t("gameDetail.addScorer")}
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <Modal title={t("gameDetail.enterResult")} onClose={onClose}>
+      <Alert message={error} onDismiss={() => setError("")} />
+      <div className="score-entry">
+        {numField(teamA?.name || "A", scoreA, setScoreA)}
+        <span className="score-dash">-</span>
+        {numField(teamB?.name || "B", scoreB, setScoreB)}
+      </div>
+
+      {scorerPicker(playersA, scorersA, setScorersA, teamA?.name || "A")}
+      {scorerPicker(playersB, scorersB, setScorersB, teamB?.name || "B")}
+
+      {isLeague && (
+        <>
+          <div className="modal-section-title">
+            {t("gameDetail.yellowCards")} / {t("gameDetail.redCards")}
+          </div>
+          <div className="cards-entry">
+            <div className="cards-team">
+              <span className="cards-team-name">{teamA?.name}</span>
+              {numField("🟨", yellowA, setYellowA)}
+              {numField("🟥", redA, setRedA)}
+            </div>
+            <div className="cards-team">
+              <span className="cards-team-name">{teamB?.name}</span>
+              {numField("🟨", yellowB, setYellowB)}
+              {numField("🟥", redB, setRedB)}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="card-actions" style={{ marginTop: 16 }}>
+        <button className="btn btn-primary btn-sm" onClick={submit}>
+          {t("common.save")}
+        </button>
+        {match.status === "done" && (
+          <button className="btn btn-sm" onClick={reset}>
+            {t("gameDetail.resetMatch")}
+          </button>
+        )}
+        <button className="btn btn-sm" onClick={onClose}>
+          {t("common.cancel")}
+        </button>
+      </div>
+    </Modal>
   );
 }

@@ -717,6 +717,150 @@ button {
   color: var(--olive-dark);
 }
 
+/* League standings table */
+.standings-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 460px;
+}
+.standings-table th,
+.standings-table td {
+  padding: 10px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+.standings-table thead th {
+  font-size: 0.719rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+}
+.standings-table tbody tr + tr td {
+  border-top: 1px solid var(--border);
+}
+.standings-table .st-team {
+  text-align: start;
+  font-weight: 600;
+  padding-inline-start: 14px;
+}
+.standings-table .st-pts {
+  font-weight: 700;
+  color: var(--olive-dark);
+}
+.standings-table tbody tr:first-child .st-pts {
+  color: var(--olive-dark);
+}
+
+/* Roster match score + scorers */
+.match-score {
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--ink);
+  flex-shrink: 0;
+  min-width: 52px;
+  text-align: center;
+}
+.match-scorers {
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* Result modal */
+.score-entry {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.score-field {
+  flex: 1;
+  max-width: 160px;
+}
+.score-field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.score-field input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  font-family: inherit;
+  font-size: 1.25rem;
+  text-align: center;
+  background: #fff;
+}
+:root[data-theme="dark"] .score-field input {
+  background: var(--card-alt);
+  color: var(--ink);
+}
+.score-dash {
+  font-weight: 700;
+  font-size: 1.5rem;
+  padding-bottom: 8px;
+  color: var(--ink-faint);
+}
+.scorer-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.scorer-row select {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: #fff;
+}
+:root[data-theme="dark"] .scorer-row select {
+  background: var(--card-alt);
+  color: var(--ink);
+}
+.cards-entry {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.cards-team {
+  flex: 1;
+  min-width: 150px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.cards-team-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding-bottom: 10px;
+}
+.cards-team .score-field {
+  max-width: 56px;
+}
+.cards-team .score-field input {
+  font-size: 1rem;
+  padding: 8px;
+}
+
 /* Teams */
 .team-card {
   border-radius: var(--radius-lg);

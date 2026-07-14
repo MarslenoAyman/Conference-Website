@@ -111,6 +111,30 @@ ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_b_id TEXT REFERENCES game_team
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS next_match_id TEXT REFERENCES matches(id) ON DELETE SET NULL;
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS next_slot TEXT;
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS bracket_pos INTEGER NOT NULL DEFAULT 0;
+-- Football scoring: goals + cards per side (cards feed league tiebreakers).
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS score_a INTEGER;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS score_b INTEGER;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS red_a INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS yellow_a INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS red_b INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS yellow_b INTEGER NOT NULL DEFAULT 0;
+
+-- Live goal events for the current competition (cleared with their match on regenerate).
+CREATE TABLE IF NOT EXISTS match_goals (
+  id TEXT PRIMARY KEY,
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  team_id TEXT REFERENCES game_teams(id) ON DELETE SET NULL
+);
+
+-- Banked goals from past (reset) competitions, so the scorer sheet survives regenerate.
+CREATE TABLE IF NOT EXISTS player_goals (
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  goals INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (game_id, user_id)
+);
 
 CREATE TABLE IF NOT EXISTS match_players (
   match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,

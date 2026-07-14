@@ -113,32 +113,120 @@ async function competitionView(gameId, format) {
     "SELECT * FROM matches WHERE game_id = $1 ORDER BY round, bracket_pos, created_at",
     [gameId]
   );
+  const { rows: goals } = await pool.query(
+    `SELECT mg.match_id, mg.user_id, mg.team_id, u.name FROM match_goals mg
+     JOIN users u ON u.id = mg.user_id WHERE mg.game_id = $1`,
+    [gameId]
+  );
+  const scorersFor = (matchId, teamId) =>
+    goals.filter((g) => g.match_id === matchId && g.team_id === teamId).map((g) => ({ id: g.user_id, name: g.name }));
+
   const matchList = matches.map((m) => ({
     id: m.id,
     round: m.round,
     status: m.status,
     winnerSide: m.winner_side,
+    scoreA: m.score_a,
+    scoreB: m.score_b,
+    redA: m.red_a,
+    yellowA: m.yellow_a,
+    redB: m.red_b,
+    yellowB: m.yellow_b,
     sideA: side(m.team_a_id),
     sideB: side(m.team_b_id),
+    scorersA: scorersFor(m.id, m.team_a_id),
+    scorersB: scorersFor(m.id, m.team_b_id),
   }));
 
   let standings = null;
   if (format === "league") {
     const tally = new Map();
-    for (const t of teams) tally.set(t.id, { id: t.id, name: t.name, wins: 0, losses: 0 });
+    for (const t of teams)
+      tally.set(t.id, {
+        id: t.id,
+        name: t.name,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        gf: 0,
+        ga: 0,
+        red: 0,
+        yellow: 0,
+        points: 0,
+      });
     for (const m of matches) {
-      if (m.status !== "done" || !m.winner_side) continue;
-      const winId = m.winner_side === "a" ? m.team_a_id : m.team_b_id;
-      const loseId = m.winner_side === "a" ? m.team_b_id : m.team_a_id;
-      if (winId && tally.has(winId)) tally.get(winId).wins += 1;
-      if (loseId && tally.has(loseId)) tally.get(loseId).losses += 1;
+      if (m.status !== "done" || m.score_a === null || m.score_b === null) continue;
+      const A = tally.get(m.team_a_id);
+      const B = tally.get(m.team_b_id);
+      if (!A || !B) continue;
+      A.played += 1;
+      B.played += 1;
+      A.gf += m.score_a;
+      A.ga += m.score_b;
+      B.gf += m.score_b;
+      B.ga += m.score_a;
+      A.red += m.red_a;
+      A.yellow += m.yellow_a;
+      B.red += m.red_b;
+      B.yellow += m.yellow_b;
+      if (m.score_a > m.score_b) {
+        A.wins += 1;
+        A.points += 3;
+        B.losses += 1;
+      } else if (m.score_b > m.score_a) {
+        B.wins += 1;
+        B.points += 3;
+        A.losses += 1;
+      } else {
+        A.draws += 1;
+        B.draws += 1;
+        A.points += 1;
+        B.points += 1;
+      }
     }
-    standings = [...tally.values()].sort(
-      (a, b) => b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name)
-    );
+    standings = [...tally.values()]
+      .map((t) => ({ ...t, gd: t.gf - t.ga }))
+      .sort(
+        (a, b) =>
+          b.points - a.points || b.gd - a.gd || a.red - b.red || a.yellow - b.yellow || a.name.localeCompare(b.name)
+      );
   }
 
   return { matches: matchList, standings };
+}
+
+// Goal-scorers sheet: banked (past competitions) + live goals, per served, ranked.
+async function scorerSheet(gameId) {
+  const { rows } = await pool.query(
+    `SELECT u.id, u.name, COALESCE(pg.goals, 0) + COALESCE(mg.cnt, 0) AS goals
+     FROM users u
+     LEFT JOIN player_goals pg ON pg.user_id = u.id AND pg.game_id = $1
+     LEFT JOIN (
+       SELECT user_id, COUNT(*)::int AS cnt FROM match_goals WHERE game_id = $1 GROUP BY user_id
+     ) mg ON mg.user_id = u.id
+     WHERE COALESCE(pg.goals, 0) + COALESCE(mg.cnt, 0) > 0
+     ORDER BY goals DESC, u.name`,
+    [gameId]
+  );
+  return rows.map((r) => ({ id: r.id, name: r.name, goals: Number(r.goals) }));
+}
+
+// competitionView plus the persistent scorer sheet.
+async function withScorers(gameId, format) {
+  const view = await competitionView(gameId, format);
+  view.scorers = await scorerSheet(gameId);
+  return view;
+}
+
+// Fold the current competition's live goals into the persistent per-player tally.
+async function bankGoals(gameId) {
+  await pool.query(
+    `INSERT INTO player_goals (game_id, user_id, goals)
+     SELECT game_id, user_id, COUNT(*) FROM match_goals WHERE game_id = $1 GROUP BY game_id, user_id
+     ON CONFLICT (game_id, user_id) DO UPDATE SET goals = player_goals.goals + EXCLUDED.goals`,
+    [gameId]
+  );
 }
 
 // Push cup winners into the next bracket round (recomputed from scratch, so
@@ -174,14 +262,17 @@ async function recomputeBracket(gameId) {
   }
 }
 
-// Clear a roster game's fixtures (called when its team set changes).
+// Clear a roster game's fixtures (called when its team set changes). Goals are
+// banked first so the scorer sheet is never lost.
 async function resetFixtures(gameId) {
+  await bankGoals(gameId);
   await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
   await pool.query("UPDATE games SET fixtures_ready = false WHERE id = $1", [gameId]);
 }
 
 // Build League (round-robin) or Cup (single-elimination) fixtures for a roster game.
 async function generateFixtures(gameId, format) {
+  await bankGoals(gameId);
   await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
   const { rows: teams } = await pool.query("SELECT id FROM game_teams WHERE game_id = $1 ORDER BY name", [gameId]);
   const teamIds = teams.map((t) => t.id);
@@ -265,6 +356,7 @@ router.get("/:id", async (req, res, next) => {
         game.matches = [];
         game.standings = game.format === "league" ? [] : null;
       }
+      game.scorers = await scorerSheet(game.id);
     } else {
       const { matches, standings } = await matchupView(game.id, game.format);
       game.matches = matches;
@@ -435,6 +527,7 @@ router.post("/:id/generate", requireRole("full"), async (req, res, next) => {
     const { matches, standings } = await competitionView(game.id, game.format);
     game.matches = matches;
     game.standings = standings;
+    game.scorers = await scorerSheet(game.id);
     res.json({ game });
   } catch (err) {
     next(err);
@@ -488,6 +581,13 @@ router.post("/:id/matches", requireRole("full"), async (req, res, next) => {
 
 router.put("/:id/matches/:matchId", requireRole("full"), async (req, res, next) => {
   try {
+    const { rows: gameRows } = await pool.query("SELECT type, format FROM games WHERE id = $1", [req.params.id]);
+    if (!gameRows[0]) return res.status(404).json({ error: "Game not found." });
+    const game = gameRows[0];
+
+    if (game.type === "roster") return await saveRosterResult(req, res, game);
+
+    // duel / matchup games: winner-side only (unchanged)
     const { winnerSide } = req.body || {};
     if (winnerSide === null) {
       await pool.query(
@@ -504,16 +604,69 @@ router.put("/:id/matches/:matchId", requireRole("full"), async (req, res, next) 
       );
       if (rowCount === 0) return res.status(404).json({ error: "Match not found." });
     }
-    const { rows: gameRows } = await pool.query("SELECT type, format FROM games WHERE id = $1", [req.params.id]);
-    if (gameRows[0]?.type === "roster") {
-      if (gameRows[0].format === "cup") await recomputeBracket(req.params.id);
-      return res.json(await competitionView(req.params.id, gameRows[0].format));
-    }
-    res.json(await matchupView(req.params.id, gameRows[0]?.format));
+    res.json(await matchupView(req.params.id, game.format));
   } catch (err) {
     next(err);
   }
 });
+
+// Save a roster (Football) match result: score + goal scorers + cards.
+async function saveRosterResult(req, res, game) {
+  const gameId = req.params.id;
+  const matchId = req.params.matchId;
+  const body = req.body || {};
+
+  const { rows: matchRows } = await pool.query("SELECT * FROM matches WHERE id = $1 AND game_id = $2", [
+    matchId,
+    gameId,
+  ]);
+  if (!matchRows[0]) return res.status(404).json({ error: "Match not found." });
+  const match = matchRows[0];
+
+  // Reset a played result back to unplayed.
+  if (body.scoreA === null || body.scoreA === undefined) {
+    await pool.query(
+      `UPDATE matches SET status = 'scheduled', winner_side = NULL, score_a = NULL, score_b = NULL,
+        red_a = 0, yellow_a = 0, red_b = 0, yellow_b = 0 WHERE id = $1`,
+      [matchId]
+    );
+    await pool.query("DELETE FROM match_goals WHERE match_id = $1", [matchId]);
+    if (game.format === "cup") await recomputeBracket(gameId);
+    return res.json(await withScorers(gameId, game.format));
+  }
+
+  const num = (v) => Math.max(0, parseInt(v, 10) || 0);
+  const scoreA = num(body.scoreA);
+  const scoreB = num(body.scoreB);
+  if (game.format === "cup" && scoreA === scoreB) {
+    return res.status(400).json({ error: "A cup match must have a winner." });
+  }
+  const winnerSide = scoreA > scoreB ? "a" : scoreB > scoreA ? "b" : null;
+
+  await pool.query(
+    `UPDATE matches SET status = 'done', winner_side = $1, score_a = $2, score_b = $3,
+      red_a = $4, yellow_a = $5, red_b = $6, yellow_b = $7 WHERE id = $8`,
+    [winnerSide, scoreA, scoreB, num(body.redA), num(body.yellowA), num(body.redB), num(body.yellowB), matchId]
+  );
+
+  // Replace this match's goal scorers.
+  await pool.query("DELETE FROM match_goals WHERE match_id = $1", [matchId]);
+  const scorers = Array.isArray(body.scorers) ? body.scorers : [];
+  for (const s of scorers) {
+    if (!s || !s.userId || (s.side !== "a" && s.side !== "b")) continue;
+    const teamId = s.side === "a" ? match.team_a_id : match.team_b_id;
+    await pool.query("INSERT INTO match_goals (id, game_id, match_id, user_id, team_id) VALUES ($1, $2, $3, $4, $5)", [
+      randomUUID(),
+      gameId,
+      matchId,
+      s.userId,
+      teamId,
+    ]);
+  }
+
+  if (game.format === "cup") await recomputeBracket(gameId);
+  return res.json(await withScorers(gameId, game.format));
+}
 
 router.delete("/:id/matches/:matchId", requireRole("full"), async (req, res, next) => {
   try {
