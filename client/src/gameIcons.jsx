@@ -53,3 +53,12 @@ export const GAME_ICON_COLORS = {
 };
 
 export const GAME_ICON_KEYS = ["football", "volleyball", "chess", "billiard", "pingpong", "ball"];
+
+export const GAME_ICON_BADGE_CLASS = {
+  football: "icon-badge--olive",
+  volleyball: "icon-badge--gold",
+  chess: "icon-badge--maroon",
+  billiard: "icon-badge--olive-dark",
+  pingpong: "icon-badge--brick",
+  ball: "icon-badge--olive-dark",
+};

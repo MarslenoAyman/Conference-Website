@@ -144,7 +144,7 @@ button {
 .brand {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 2px;
   font-family: var(--font-main);
   font-weight: 600;
   font-size: 1.375rem;
@@ -152,19 +152,19 @@ button {
   text-decoration: none;
 }
 .brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: var(--bg);
-  color: var(--maroon);
+  color: var(--olive-dark);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 .brand-mark svg {
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
 }
 .nav-links {
   display: flex;
@@ -209,6 +209,9 @@ button {
   letter-spacing: 0.06em;
   color: var(--olive);
   font-weight: 700;
+}
+.nav-signout-mobile {
+  display: none;
 }
 
 /* Buttons */
@@ -259,7 +262,7 @@ button {
   margin-bottom: 12px;
 }
 .page-title em {
-  font-style: italic;
+  font-style: normal;
   color: var(--gold);
 }
 .page-subtitle {
@@ -508,12 +511,6 @@ button {
   box-shadow: var(--shadow);
   transform: scale(1.02);
 }
-.game-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 14px;
-}
 .game-icon {
   width: 44px;
   height: 44px;
@@ -529,12 +526,7 @@ button {
 }
 .game-card h3 {
   font-size: 1.1875rem;
-  margin-bottom: 6px;
-}
-.game-card p {
-  color: var(--ink-soft);
-  font-size: 0.875rem;
-  margin: 0;
+  margin-bottom: 12px;
 }
 
 /* Game detail */
@@ -950,6 +942,7 @@ button {
   font-size: 2.75rem;
   line-height: 1.15;
   margin-bottom: 16px;
+  color: color-mix(in srgb, var(--gold) 32%, var(--bg) 68%);
 }
 .hero-subtitle {
   font-size: 1rem;
@@ -987,24 +980,10 @@ button {
   border: 1.5px solid rgba(255, 255, 255, 0.7);
   color: #fff;
 }
-.hero-collage {
-  position: absolute;
-  inset-inline-end: var(--space-2xl);
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  z-index: 1;
-}
-.hero-collage-main,
-.hero-collage-side > div,
 .gallery-photo {
   overflow: hidden;
   flex-shrink: 0;
 }
-.hero-collage-main img,
-.hero-collage-side > div img,
 .gallery-photo img {
   width: 100%;
   height: 100%;
@@ -1013,23 +992,6 @@ button {
   mask-image: linear-gradient(to bottom, transparent, black 6%, black 94%, transparent),
     linear-gradient(to right, transparent, black 6%, black 94%, transparent);
   mask-composite: intersect;
-}
-.hero-collage-main {
-  width: 260px;
-  height: 300px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-}
-.hero-collage-side {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.hero-collage-side > div {
-  width: 150px;
-  height: 143px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
 }
 
 /* Home: explore grid */
@@ -1091,12 +1053,7 @@ button {
 }
 .explore-card h3 {
   font-size: 1.125rem;
-  margin-bottom: 4px;
-}
-.explore-card p {
-  margin: 0 0 10px;
-  color: var(--ink-soft);
-  font-size: 0.844rem;
+  margin-bottom: 12px;
 }
 .explore-card .open-link {
   font-size: 0.781rem;
@@ -1122,6 +1079,13 @@ button {
   font-size: 0.906rem;
   line-height: 1.6;
   margin: 10px 0 0;
+}
+.gallery-text-col .gallery-lead {
+  font-family: var(--font-main);
+  font-weight: 700;
+  color: var(--olive-dark);
+  font-size: 1.0625rem;
+  margin-top: 12px;
 }
 .gallery-photos {
   flex: 1;
@@ -1194,6 +1158,15 @@ button {
   gap: 14px;
   flex-wrap: wrap;
 }
+.bonus-rank {
+  color: var(--olive-dark);
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 1rem;
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+}
 .bonus-row:last-child {
   border-bottom: none;
 }
@@ -1209,6 +1182,69 @@ button {
   font-size: 1.25rem;
   min-width: 40px;
   text-align: center;
+}
+.bonus-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  font-size: 0.844rem;
+}
+.bonus-history-row:last-child {
+  border-bottom: none;
+}
+.bonus-history-name {
+  font-weight: 600;
+}
+.bonus-history-delta {
+  color: var(--olive-dark);
+  font-weight: 700;
+  margin-inline-start: 8px;
+}
+.bonus-history-delta.negative {
+  color: var(--brick);
+}
+.bonus-history-reason {
+  color: var(--ink-soft);
+  margin-inline-start: 8px;
+}
+.bonus-history-date {
+  color: var(--ink-faint);
+  font-size: 0.781rem;
+  white-space: nowrap;
+}
+.bonus-history-actor {
+  color: var(--ink-faint);
+  font-size: 0.781rem;
+  margin-inline-start: 8px;
+  font-style: italic;
+}
+.bonus-points-input {
+  width: 70px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 0.906rem;
+  background: #fff;
+  text-align: center;
+  direction: ltr;
+}
+:root[data-theme="dark"] .bonus-points-input {
+  background: var(--card-alt);
+  color: var(--ink);
+}
+.sign-btn {
+  opacity: 0.5;
+}
+.sign-btn.active {
+  opacity: 1;
+  background: var(--olive-dark);
+  border-color: var(--olive-dark);
+  color: #fff;
 }
 .bonus-header {
   display: flex;
@@ -1226,6 +1262,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
+  font-family: inherit;
   font-size: 13.5px;
   background: #fff;
   min-width: 160px;
@@ -1437,6 +1474,7 @@ button {
 @media (max-width: 760px) {
   .navbar-inner {
     flex-wrap: wrap;
+    justify-content: space-between;
     gap: 12px;
     padding: 14px 20px 14px 70px;
     position: relative;
@@ -1473,7 +1511,19 @@ button {
     padding: 10px 14px;
   }
   .nav-user {
-    padding-top: 10px;
+    padding-top: 0;
+  }
+  .nav-signout-desktop {
+    display: none;
+  }
+  .nav-signout-mobile {
+    display: block;
+    margin-top: 8px;
+    border: none;
+    border-top: 1px solid var(--border);
+    background: none;
+    text-align: start;
+    cursor: pointer;
   }
   .grid-2,
   .grid-teams {
@@ -1483,12 +1533,24 @@ button {
     flex-direction: column;
     align-items: stretch;
   }
+  .timeline-list {
+    padding: var(--space-md) var(--space-sm);
+  }
+  .timeline-row {
+    gap: 12px;
+  }
+  .timeline-card {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    min-width: 0;
+  }
+  .session-title {
+    flex-basis: 100%;
+    min-width: 0;
+  }
   .hero-banner {
     min-height: 0;
     padding: var(--space-xl) var(--space-md);
-  }
-  .hero-collage {
-    display: none;
   }
   .hero-title {
     font-size: 2rem;

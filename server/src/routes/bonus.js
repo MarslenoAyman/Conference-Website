@@ -4,7 +4,7 @@ import { pool } from "../db/pool.js";
 import { authenticate, requireRole } from "../auth.js";
 
 const router = Router();
-router.use(authenticate, requireRole("full"));
+router.use(authenticate, requireRole("full", "limited"));
 
 router.get("/", async (req, res, next) => {
   try {
@@ -23,22 +23,55 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.post("/:userId", async (req, res, next) => {
+router.get("/history", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT bl.id, bl.delta, bl.reason, bl.created_at, u.id AS user_id, u.name AS user_name,
+              actor.name AS actor_name
+       FROM bonus_log bl
+       JOIN users u ON u.id = bl.user_id
+       LEFT JOIN users actor ON actor.id = bl.actor_id
+       ORDER BY bl.created_at DESC
+       LIMIT 200`
+    );
+    res.json({
+      history: rows.map((r) => ({
+        id: r.id,
+        userId: r.user_id,
+        userName: r.user_name,
+        delta: r.delta,
+        reason: r.reason,
+        createdAt: r.created_at,
+        actorName: r.actor_name,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:userId", requireRole("full"), async (req, res, next) => {
   try {
     const { delta, reason } = req.body || {};
     const change = Number(delta);
-    if (!Number.isFinite(change)) return res.status(400).json({ error: "A numeric point change is required." });
+    if (!Number.isFinite(change) || change === 0) {
+      return res.status(400).json({ error: "A numeric point change is required." });
+    }
     const { rows } = await pool.query(
       "UPDATE users SET bonus = GREATEST(0, bonus + $1) WHERE id = $2 RETURNING id, name, bonus",
       [change, req.params.userId]
     );
     if (!rows[0]) return res.status(404).json({ error: "Member not found." });
-    await pool.query("INSERT INTO bonus_log (id, user_id, delta, reason) VALUES ($1, $2, $3, $4)", [
-      randomUUID(),
-      req.params.userId,
-      change,
-      reason ? String(reason).trim().slice(0, 200) || null : null,
-    ]);
+    await pool.query(
+      "INSERT INTO bonus_log (id, user_id, delta, reason, actor_id) VALUES ($1, $2, $3, $4, $5)",
+      [
+        randomUUID(),
+        req.params.userId,
+        change,
+        reason ? String(reason).trim().slice(0, 200) || null : null,
+        req.user.id,
+      ]
+    );
     res.json({ member: rows[0] });
   } catch (err) {
     next(err);

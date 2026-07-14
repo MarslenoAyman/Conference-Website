@@ -6,7 +6,7 @@ import Alert from "../components/Alert.jsx";
 
 export default function Timeline() {
   const { user, token } = useAuth();
-  const { t, tError } = useLanguage();
+  const { t, tError, tDay } = useLanguage();
   const [days, setDays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -99,7 +99,7 @@ export default function Timeline() {
             <div className="day-block" key={day.id}>
               <div className="day-header">
                 <h3>
-                  {t("timeline.day")} {day.day} — {day.label}
+                  {t("timeline.day")} {day.day} — {tDay(day.label)}
                 </h3>
                 <div className="day-meta">
                   <span>

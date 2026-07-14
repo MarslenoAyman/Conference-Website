@@ -17,7 +17,7 @@ async function request(path, { method = "GET", body, token } = {}) {
 }
 
 export const api = {
-  login: (password) => request("/auth/login", { method: "POST", body: { password } }),
+  login: (username, password) => request("/auth/login", { method: "POST", body: { username, password } }),
   signup: (username, password) => request("/auth/signup", { method: "POST", body: { username, password } }),
   me: (token) => request("/auth/me", { token }),
 
@@ -45,6 +45,12 @@ export const api = {
   addGame: (token, game) => request("/games", { method: "POST", body: game, token }),
   updateGame: (token, id, game) => request(`/games/${id}`, { method: "PUT", body: game, token }),
   deleteGame: (token, id) => request(`/games/${id}`, { method: "DELETE", token }),
+  addGameTeam: (token, gameId, name, color) =>
+    request(`/games/${gameId}/teams`, { method: "POST", body: { name, color }, token }),
+  updateGameTeam: (token, gameId, teamId, team) =>
+    request(`/games/${gameId}/teams/${teamId}`, { method: "PUT", body: team, token }),
+  deleteGameTeam: (token, gameId, teamId) =>
+    request(`/games/${gameId}/teams/${teamId}`, { method: "DELETE", token }),
   addToRoster: (token, gameId, teamId, userId) =>
     request(`/games/${gameId}/roster`, { method: "POST", body: { teamId, userId }, token }),
   removeFromRoster: (token, gameId, userId) =>
@@ -66,6 +72,7 @@ export const api = {
   unassign: (token, userId) => request(`/teams/unassign`, { method: "POST", body: { userId }, token }),
 
   getBonusMembers: (token) => request("/bonus", { token }),
+  getBonusHistory: (token) => request("/bonus/history", { token }),
   adjustBonus: (token, userId, delta, reason) =>
     request(`/bonus/${userId}`, { method: "POST", body: { delta, reason }, token }),
 

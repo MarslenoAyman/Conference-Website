@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
@@ -7,28 +7,41 @@ import { GAME_ICONS, GAME_ICON_COLORS } from "../gameIcons.jsx";
 import Modal from "../components/Modal.jsx";
 import Alert from "../components/Alert.jsx";
 
+const PALETTE = [
+  "#5b6b4a",
+  "#c9a06a",
+  "#8c6f5e",
+  "#3d4a2e",
+  "#6b4a3a",
+  "#a9b98c",
+  "#b5433d",
+  "#3a5a8c",
+  "#a97a3a",
+  "#7c9473",
+];
+
 export default function GameDetail() {
   const { id } = useParams();
   const { user, token } = useAuth();
   const { t, tError } = useLanguage();
   const [game, setGame] = useState(null);
-  const [teams, setTeams] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [rosterTeamId, setRosterTeamId] = useState(null);
+  const [manageTeamId, setManageTeamId] = useState(null);
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamColor, setNewTeamColor] = useState(PALETTE[0]);
 
   const canEdit = user.role === "full";
 
   function load() {
     setLoading(true);
-    const calls = [api.getGame(token, id), api.getTeams(token)];
+    const calls = [api.getGame(token, id)];
     if (canEdit) calls.push(api.getUsers(token));
     Promise.all(calls)
-      .then(([g, teamsRes, usersRes]) => {
+      .then(([g, usersRes]) => {
         setGame(g.game);
-        setTeams(teamsRes.teams || []);
         if (usersRes) setAllUsers(usersRes.users || []);
       })
       .catch((err) => setError(tError(err.message)))
@@ -48,6 +61,36 @@ export default function GameDetail() {
     try {
       const { rosters } = await api.removeFromRoster(token, id, userId);
       setGame((prev) => ({ ...prev, rosters }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
+  async function addGameTeam(e) {
+    e.preventDefault();
+    if (!newTeamName.trim()) return;
+    try {
+      const { rosters } = await api.addGameTeam(token, id, newTeamName, newTeamColor);
+      setGame((prev) => ({ ...prev, rosters }));
+      setNewTeamName("");
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function saveTeamDetails(teamId, details) {
+    try {
+      const { rosters } = await api.updateGameTeam(token, id, teamId, details);
+      setGame((prev) => ({ ...prev, rosters }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function deleteGameTeam(teamId) {
+    if (!confirm(t("common.confirmDeleteGeneric"))) return;
+    try {
+      const { rosters } = await api.deleteGameTeam(token, id, teamId);
+      setGame((prev) => ({ ...prev, rosters }));
+      setManageTeamId((prev) => (prev === teamId ? null : prev));
     } catch (err) {
       setError(tError(err.message));
     }
@@ -109,8 +152,7 @@ export default function GameDetail() {
     );
   }
 
-  const rosterTeam = rosterTeamId ? teams.find((tm) => tm.id === rosterTeamId) : null;
-  const rosterEntry = rosterTeamId ? game.rosters.find((r) => r.teamId === rosterTeamId) : null;
+  const manageTeam = manageTeamId ? game.rosters.find((r) => r.teamId === manageTeamId) : null;
 
   return (
     <div className="page">
@@ -136,44 +178,76 @@ export default function GameDetail() {
       <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
       {game.type === "roster" ? (
-        <div className="grid-teams section-gap">
-          {game.rosters.map((r) => (
-            <div className="team-card" key={r.teamId}>
-              <div className="team-banner" style={{ background: r.color }}>
-                <div className="team-banner-top">
-                  <span>{t("gameDetail.roster")}</span>
-                  <span>
-                    {r.players.length} {t("teams.members")}
-                  </span>
-                </div>
-                <div className="team-banner-bottom">
-                  <h3>{r.teamName}</h3>
-                </div>
-              </div>
-              <div className="team-body">
-                {r.players.length === 0 ? (
-                  <p className="empty-note">{t("gameDetail.noPlayersYet")}</p>
-                ) : (
-                  r.players.map((p) => (
-                    <div className="member-row" key={p.id}>
-                      <span>{p.name}</span>
-                      {canEdit && (
-                        <button className="btn btn-sm btn-danger" onClick={() => removeRoster(p.id)}>
-                          {t("teams.removeFromTeam")}
-                        </button>
-                      )}
+        <>
+          <div className="grid-teams section-gap">
+            {game.rosters.length === 0 ? (
+              <p className="center-note">{t("gameDetail.noTeamsYet")}</p>
+            ) : (
+              game.rosters.map((r) => (
+                <div className="team-card" key={r.teamId}>
+                  <div className="team-banner" style={{ background: r.color }}>
+                    <div className="team-banner-top">
+                      <span>{t("gameDetail.roster")}</span>
+                      <span>
+                        {r.players.length} {t("teams.members")}
+                      </span>
                     </div>
-                  ))
-                )}
-                {canEdit && (
-                  <button className="btn btn-sm" style={{ marginTop: 10 }} onClick={() => setRosterTeamId(r.teamId)}>
-                    {t("gameDetail.managePlayers")}
-                  </button>
-                )}
+                    <div className="team-banner-bottom">
+                      <h3>{r.teamName}</h3>
+                    </div>
+                  </div>
+                  <div className="team-body">
+                    {r.players.length === 0 ? (
+                      <p className="empty-note">{t("gameDetail.noPlayersYet")}</p>
+                    ) : (
+                      r.players.map((p) => (
+                        <div className="member-row" key={p.id}>
+                          <span>{p.name}</span>
+                        </div>
+                      ))
+                    )}
+                    {canEdit && (
+                      <div className="card-actions">
+                        <button className="btn btn-sm" onClick={() => setManageTeamId(r.teamId)}>
+                          {t("teams.editTeam")}
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => deleteGameTeam(r.teamId)}>
+                          {t("teams.deleteTeam")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {canEdit && (
+            <form className="add-box" onSubmit={addGameTeam}>
+              <label>{t("teams.createTeamLabel")}</label>
+              <div className="add-row">
+                <input
+                  placeholder={t("teams.teamNamePlaceholder")}
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                />
+                <div className="swatch-row">
+                  {PALETTE.map((c) => (
+                    <span
+                      key={c}
+                      className={"color-swatch" + (c === newTeamColor ? " selected" : "")}
+                      style={{ background: c }}
+                      onClick={() => setNewTeamColor(c)}
+                    />
+                  ))}
+                </div>
+                <button className="btn btn-primary" type="submit">
+                  {t("teams.addTeamButton")}
+                </button>
               </div>
-            </div>
-          ))}
-        </div>
+            </form>
+          )}
+        </>
       ) : (
         <div className="section-gap">
           {canEdit && (
@@ -248,13 +322,15 @@ export default function GameDetail() {
         </div>
       )}
 
-      {rosterTeam && rosterEntry && (
-        <RosterPickerModal
-          team={rosterTeam}
-          rosterPlayers={rosterEntry.players}
-          onAssign={(userId) => assignRoster(rosterTeamId, userId)}
+      {manageTeam && (
+        <GameTeamModal
+          team={manageTeam}
+          rosters={game.rosters}
+          allUsers={allUsers}
+          onSaveDetails={(details) => saveTeamDetails(manageTeam.teamId, details)}
+          onAssign={(userId) => assignRoster(manageTeam.teamId, userId)}
           onRemove={removeRoster}
-          onClose={() => setRosterTeamId(null)}
+          onClose={() => setManageTeamId(null)}
         />
       )}
 
@@ -271,17 +347,60 @@ export default function GameDetail() {
   );
 }
 
-function RosterPickerModal({ team, rosterPlayers, onAssign, onRemove, onClose }) {
+function GameTeamModal({ team, rosters, allUsers, onClose, onSaveDetails, onAssign, onRemove }) {
   const { t } = useLanguage();
-  const rosterIds = new Set(rosterPlayers.map((p) => p.id));
-  const candidates = team.members.filter((m) => !rosterIds.has(m.id));
+  const [name, setName] = useState(team.teamName);
+  const [color, setColor] = useState(team.color);
+  const [query, setQuery] = useState("");
+
+  const rosterTeamByUserId = useMemo(() => {
+    const map = {};
+    for (const r of rosters) {
+      if (r.teamId === team.teamId) continue;
+      for (const p of r.players) map[p.id] = r.teamName;
+    }
+    return map;
+  }, [rosters, team.teamId]);
+  const memberIds = useMemo(() => new Set(team.players.map((p) => p.id)), [team.players]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allUsers.filter((u) => !memberIds.has(u.id)).filter((u) => !q || u.name.toLowerCase().includes(q));
+  }, [allUsers, memberIds, query]);
+
+  function saveDetails() {
+    if (!name.trim()) return;
+    onSaveDetails({ name: name.trim(), color });
+  }
+
   return (
-    <Modal title={`${t("gameDetail.managePlayers")} — ${team.name}`} onClose={onClose}>
+    <Modal title={`${t("teams.editModalTitle")} — ${team.teamName}`} onClose={onClose}>
+      <div className="field">
+        <label>{t("teams.teamName")}</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <div className="field">
+        <label>{t("teams.teamColor")}</label>
+        <div className="swatch-row">
+          {PALETTE.map((c) => (
+            <span
+              key={c}
+              className={"color-swatch" + (c === color ? " selected" : "")}
+              style={{ background: c }}
+              onClick={() => setColor(c)}
+            />
+          ))}
+        </div>
+      </div>
+      <button className="btn btn-primary btn-sm" onClick={saveDetails}>
+        {t("common.save")}
+      </button>
+
       <div className="modal-section-title">{t("gameDetail.onRoster")}</div>
-      {rosterPlayers.length === 0 ? (
+      {team.players.length === 0 ? (
         <p className="empty-note">{t("gameDetail.noPlayersYet")}</p>
       ) : (
-        rosterPlayers.map((p) => (
+        team.players.map((p) => (
           <div className="member-pick-row" key={p.id}>
             <span className="member-pick-name">{p.name}</span>
             <button className="btn btn-sm btn-danger" onClick={() => onRemove(p.id)}>
@@ -290,19 +409,34 @@ function RosterPickerModal({ team, rosterPlayers, onAssign, onRemove, onClose })
           </div>
         ))
       )}
-      <div className="modal-section-title">{t("gameDetail.teamMembers")}</div>
-      {candidates.length === 0 ? (
-        <p className="empty-note">{t("teams.noMembers")}</p>
-      ) : (
-        candidates.map((m) => (
-          <div className="member-pick-row" key={m.id}>
-            <span className="member-pick-name">{m.name}</span>
-            <button className="btn btn-sm btn-primary" onClick={() => onAssign(m.id)}>
-              {t("gameDetail.addToRoster")}
-            </button>
+
+      <div className="modal-section-title">{t("teams.allMembers")}</div>
+      <input
+        type="text"
+        placeholder={t("teams.searchPlaceholder")}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        style={{
+          width: "100%",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          padding: "8px 12px",
+          marginBottom: 10,
+        }}
+      />
+      {filtered.map((u) => (
+        <div className="member-pick-row" key={u.id}>
+          <div>
+            <div className="member-pick-name">{u.name}</div>
+            <div className="member-pick-status">
+              {rosterTeamByUserId[u.id] ? `${t("teams.onOtherTeam")} ${rosterTeamByUserId[u.id]}` : t("teams.unassigned")}
+            </div>
           </div>
-        ))
-      )}
+          <button className="btn btn-sm btn-primary" onClick={() => onAssign(u.id)}>
+            {rosterTeamByUserId[u.id] ? t("teams.moveHere") : t("teams.addHere")}
+          </button>
+        </div>
+      ))}
     </Modal>
   );
 }

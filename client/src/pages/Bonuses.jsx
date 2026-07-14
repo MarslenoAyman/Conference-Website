@@ -5,19 +5,40 @@ import { api } from "../api.js";
 import Alert from "../components/Alert.jsx";
 
 export default function Bonuses() {
-  const { token } = useAuth();
-  const { t, tError } = useLanguage();
+  const { user, token } = useAuth();
+  const { t, tError, lang } = useLanguage();
   const [members, setMembers] = useState([]);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reasons, setReasons] = useState({});
+  const [points, setPoints] = useState({});
+  const [signs, setSigns] = useState({});
+
+  const canEdit = user.role === "full";
 
   function load() {
-    api.getBonusMembers(token).then((d) => setMembers(d.members)).finally(() => setLoading(false));
+    Promise.all([api.getBonusMembers(token), api.getBonusHistory(token)])
+      .then(([membersRes, historyRes]) => {
+        setMembers(membersRes.members);
+        setHistory(historyRes.history);
+      })
+      .catch((err) => setError(tError(err.message)))
+      .finally(() => setLoading(false));
   }
   useEffect(load, []);
 
-  async function adjust(member, delta) {
+  function signFor(memberId) {
+    return signs[memberId] || "plus";
+  }
+
+  async function confirm(member) {
+    const amount = Number(points[member.id]);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError(tError("A numeric point change is required."));
+      return;
+    }
+    const delta = signFor(member.id) === "minus" ? -amount : amount;
     try {
       const reason = (reasons[member.id] || "").trim() || undefined;
       const { member: updated } = await api.adjustBonus(token, member.id, delta, reason);
@@ -26,8 +47,23 @@ export default function Bonuses() {
           .map((m) => (m.id === member.id ? { ...m, bonus: updated.bonus } : m))
           .sort((a, b) => b.bonus - a.bonus || a.name.localeCompare(b.name))
       );
+      setPoints((prev) => ({ ...prev, [member.id]: "" }));
+      setReasons((prev) => ({ ...prev, [member.id]: "" }));
+      const { history: freshHistory } = await api.getBonusHistory(token);
+      setHistory(freshHistory);
     } catch (err) {
       setError(tError(err.message));
+    }
+  }
+
+  function formatDate(iso) {
+    try {
+      return new Date(iso).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      return iso;
     }
   }
 
@@ -47,33 +83,87 @@ export default function Bonuses() {
         <p className="center-note">{t("bonuses.noMembers")}</p>
       ) : (
         <div className="card section-gap">
-          {members.map((m) => (
+          {members.map((m, idx) => (
             <div className="bonus-row" key={m.id}>
+              <span className="bonus-rank">{idx + 1}</span>
               <div>
                 <div className="bonus-name">{m.name}</div>
                 <div className="bonus-team">{m.phone}</div>
               </div>
-              <input
-                className="bonus-reason-input"
-                type="text"
-                placeholder={t("bonuses.reasonPlaceholder")}
-                value={reasons[m.id] || ""}
-                onChange={(e) => setReasons((prev) => ({ ...prev, [m.id]: e.target.value }))}
-              />
+              {canEdit && (
+                <input
+                  className="bonus-reason-input"
+                  type="text"
+                  placeholder={t("bonuses.reasonPlaceholder")}
+                  value={reasons[m.id] || ""}
+                  onChange={(e) => setReasons((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                />
+              )}
               <div className="bonus-controls">
-                <button className="round-btn" onClick={() => adjust(m, -1)}>
-                  −
-                </button>
                 <span className="bonus-count">{m.bonus}</span>
-                <button className="round-btn plus" onClick={() => adjust(m, 1)}>
-                  +
-                </button>
-                <button className="pill-btn" onClick={() => adjust(m, 5)}>
-                  +5
-                </button>
+                {canEdit && (
+                  <>
+                    <input
+                      className="bonus-points-input"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder={t("bonuses.pointsPlaceholder")}
+                      value={points[m.id] || ""}
+                      onChange={(e) =>
+                        setPoints((prev) => ({ ...prev, [m.id]: e.target.value.replace(/[^0-9]/g, "") }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className={"round-btn sign-btn" + (signFor(m.id) === "minus" ? " active" : "")}
+                      onClick={() => setSigns((prev) => ({ ...prev, [m.id]: "minus" }))}
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className={"round-btn sign-btn" + (signFor(m.id) === "plus" ? " active" : "")}
+                      onClick={() => setSigns((prev) => ({ ...prev, [m.id]: "plus" }))}
+                    >
+                      +
+                    </button>
+                    <button className="pill-btn" onClick={() => confirm(m)}>
+                      {t("bonuses.confirm")}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="card section-gap">
+          <div className="modal-section-title" style={{ margin: "0 0 10px" }}>
+            {t("bonuses.historyTitle")}
+          </div>
+          {history.length === 0 ? (
+            <p className="empty-note">{t("bonuses.noHistoryYet")}</p>
+          ) : (
+            history.map((h) => (
+              <div className="bonus-history-row" key={h.id}>
+                <div>
+                  <span className="bonus-history-name">{h.userName}</span>
+                  <span className={"bonus-history-delta" + (h.delta < 0 ? " negative" : "")}>
+                    {h.delta > 0 ? `+${h.delta}` : h.delta}
+                  </span>
+                  {h.reason && <span className="bonus-history-reason">— {h.reason}</span>}
+                  {h.actorName && (
+                    <span className="bonus-history-actor">
+                      {t("bonuses.byActor")} {h.actorName}
+                    </span>
+                  )}
+                </div>
+                <span className="bonus-history-date">{formatDate(h.createdAt)}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>

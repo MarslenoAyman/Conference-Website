@@ -59,17 +59,17 @@ const ICONS = {
 };
 
 const EXPLORE_CONFIG = [
-  { to: "/instructions", badge: "gold", icon: "instructions", titleKey: "home.linkInstructionsTitle", descKey: "home.linkInstructionsDesc" },
-  { to: "/timeline", badge: "olive", icon: "timeline", titleKey: "home.linkTimelineTitle", descKey: "home.linkTimelineDesc" },
-  { to: "/topics", badge: "maroon", icon: "topics", titleKey: "home.linkTopicsTitle", descKey: "home.linkTopicsDesc" },
-  { to: "/games", badge: "olive-dark", icon: "games", titleKey: "home.linkGamesTitle", descKey: "home.linkGamesDesc" },
-  { to: "/teams", badge: "gold", icon: "teams", titleKey: "home.linkTeamsTitle", descKey: "home.linkTeamsDesc" },
-  { to: "/bonuses", badge: "brick", icon: "bonuses", titleKey: "home.linkBonusesTitle", descKey: "home.linkBonusesDesc", fullOnly: true },
+  { to: "/instructions", badge: "gold", icon: "instructions", titleKey: "home.linkInstructionsTitle" },
+  { to: "/timeline", badge: "olive", icon: "timeline", titleKey: "home.linkTimelineTitle" },
+  { to: "/topics", badge: "maroon", icon: "topics", titleKey: "home.linkTopicsTitle" },
+  { to: "/games", badge: "olive-dark", icon: "games", titleKey: "home.linkGamesTitle" },
+  { to: "/teams", badge: "gold", icon: "teams", titleKey: "home.linkTeamsTitle" },
+  { to: "/bonuses", badge: "brick", icon: "bonuses", titleKey: "home.linkBonusesTitle", fullOnly: true },
 ];
 
 export default function Home() {
   const { user, token } = useAuth();
-  const { t } = useLanguage();
+  const { t, tDay } = useLanguage();
   const [upcomingDay, setUpcomingDay] = useState(null);
   const [previewTopics, setPreviewTopics] = useState([]);
 
@@ -101,7 +101,7 @@ export default function Home() {
           <p className="hero-subtitle">{t("home.heroSubtitle")}</p>
           <p className="hero-meta">{t("home.heroMeta")}</p>
           <div className="hero-ctas">
-            <Link to="/timeline" className="hero-btn hero-btn--solid">
+            <Link to="/timeline" className="hero-btn hero-btn--outline">
               {t("home.heroCtaTimeline")}
             </Link>
             {user.role === "full" ? (
@@ -115,19 +115,6 @@ export default function Home() {
             )}
           </div>
         </div>
-        <div className="hero-collage">
-          <div className="hero-collage-main">
-            <img src="/images/home/collage-main.jpg" alt="" />
-          </div>
-          <div className="hero-collage-side">
-            <div>
-              <img src="/images/home/collage-side-1.jpg" alt="" />
-            </div>
-            <div>
-              <img src="/images/home/collage-side-2.jpg" alt="" />
-            </div>
-          </div>
-        </div>
       </div>
 
       <div className="section-gap">
@@ -138,7 +125,6 @@ export default function Home() {
             <Link key={c.to} to={c.to} className="explore-card">
               <div className={`icon-badge icon-badge--${c.badge}`}>{ICONS[c.icon]}</div>
               <h3>{t(c.titleKey)}</h3>
-              <p>{t(c.descKey)}</p>
               <span className="open-link">{t("home.openLink")}</span>
             </Link>
           ))}
@@ -147,10 +133,10 @@ export default function Home() {
 
       <div className="section-gap gallery-section">
         <div className="gallery-text-col">
-          <div className="eyebrow">{t("home.galleryEyebrow")}</div>
           <h2 className="explore-title" style={{ marginBottom: 0 }}>
             {t("home.galleryTitle")}
           </h2>
+          <p className="gallery-lead">{t("home.galleryLead")}</p>
           <p>{t("home.galleryText")}</p>
         </div>
         <div className="gallery-photos">
@@ -172,7 +158,7 @@ export default function Home() {
           {upcomingDay ? (
             <>
               <h3 className="preview-card-title">
-                {t("timeline.day")} {upcomingDay.day} — {upcomingDay.label}
+                {t("timeline.day")} {upcomingDay.day} — {tDay(upcomingDay.label)}
               </h3>
               <div className="timeline-list" style={{ padding: 0 }}>
                 {upcomingDay.sessions.slice(0, 4).map((s) => (

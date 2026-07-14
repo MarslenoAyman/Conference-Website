@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
-import { GAME_ICONS, GAME_ICON_COLORS, GAME_ICON_KEYS } from "../gameIcons.jsx";
+import { GAME_ICONS, GAME_ICON_BADGE_CLASS, GAME_ICON_KEYS } from "../gameIcons.jsx";
 import Alert from "../components/Alert.jsx";
 
 const empty = { name: "", description: "", type: "roster", icon: "football" };
@@ -14,7 +14,6 @@ export default function Games() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [draft, setDraft] = useState(empty);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(empty);
 
@@ -24,18 +23,6 @@ export default function Games() {
     api.getGames(token).then((d) => setGames(d.games)).finally(() => setLoading(false));
   }
   useEffect(load, []);
-
-  async function addGame(e) {
-    e.preventDefault();
-    if (!draft.name.trim()) return;
-    try {
-      const { game } = await api.addGame(token, draft);
-      setGames((prev) => [...prev, game]);
-      setDraft(empty);
-    } catch (err) {
-      setError(tError(err.message));
-    }
-  }
 
   function startEdit(game, e) {
     e.preventDefault();
@@ -116,13 +103,11 @@ export default function Games() {
                 </div>
               ) : (
                 <>
-                  <div className="game-top">
-                    <div className="game-icon" style={{ color: GAME_ICON_COLORS[game.icon] || GAME_ICON_COLORS.ball }}>
-                      {GAME_ICONS[game.icon] || GAME_ICONS.ball}
-                    </div>
+                  <div className={"icon-badge " + (GAME_ICON_BADGE_CLASS[game.icon] || GAME_ICON_BADGE_CLASS.ball)}>
+                    {GAME_ICONS[game.icon] || GAME_ICONS.ball}
                   </div>
                   <h3>{game.name}</h3>
-                  <p>{game.description}</p>
+                  <span className="open-link">{t("home.openLink")}</span>
                   {canEdit && (
                     <div className="card-actions">
                       <button className="btn btn-sm" onClick={(e) => startEdit(game, e)}>
@@ -138,42 +123,6 @@ export default function Games() {
             </Link>
           ))}
         </div>
-      )}
-
-      {canEdit && (
-        <form className="add-box" onSubmit={addGame}>
-          <label>{t("games.addLabel")}</label>
-          <div className="add-row">
-            <input
-              placeholder={t("games.namePlaceholder")}
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
-            <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
-              <option value="roster">{t("games.typeRoster")}</option>
-              <option value="duel">{t("games.typeDuel")}</option>
-              <option value="matchup">{t("games.typeMatchup")}</option>
-            </select>
-            <select value={draft.icon} onChange={(e) => setDraft({ ...draft, icon: e.target.value })}>
-              {GAME_ICON_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {t(`games.icon.${key}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="add-row" style={{ marginTop: 10 }}>
-            <textarea
-              placeholder={t("games.descriptionPlaceholder")}
-              rows={2}
-              value={draft.description}
-              onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-            />
-          </div>
-          <button className="btn btn-primary" type="submit" style={{ marginTop: 10 }}>
-            {t("games.addButton")}
-          </button>
-        </form>
       )}
     </div>
   );

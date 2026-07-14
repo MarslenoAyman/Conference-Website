@@ -8,6 +8,7 @@ export default function Login() {
   const { login } = useAuth();
   const { t, tError } = useLanguage();
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,7 +18,7 @@ export default function Login() {
     setError("");
     setBusy(true);
     try {
-      await login(password);
+      await login(username, password);
       navigate("/");
     } catch (err) {
       setError(tError(err.message));
@@ -34,6 +35,16 @@ export default function Login() {
         <Alert message={error} onDismiss={() => setError("")} />
         <form onSubmit={onSubmit}>
           <div className="field">
+            <label>{t("login.username")}</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="field">
             <label>{t("login.password")}</label>
             <input
               type="password"
@@ -41,7 +52,6 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              autoFocus
             />
           </div>
           <button className="btn btn-primary full-btn" disabled={busy}>

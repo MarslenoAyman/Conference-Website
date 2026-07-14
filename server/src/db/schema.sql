@@ -72,6 +72,25 @@ CREATE TABLE IF NOT EXISTS game_rosters (
   PRIMARY KEY (game_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS game_teams (
+  id TEXT PRIMARY KEY,
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#5b6b4a'
+);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'game_rosters_team_id_fkey') THEN
+    ALTER TABLE game_rosters DROP CONSTRAINT game_rosters_team_id_fkey;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'game_rosters_team_id_gameteams_fkey') THEN
+    ALTER TABLE game_rosters
+      ADD CONSTRAINT game_rosters_team_id_gameteams_fkey
+      FOREIGN KEY (team_id) REFERENCES game_teams(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS matches (
   id TEXT PRIMARY KEY,
   game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
@@ -95,3 +114,5 @@ CREATE TABLE IF NOT EXISTS bonus_log (
   reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE bonus_log ADD COLUMN IF NOT EXISTS actor_id TEXT REFERENCES users(id) ON DELETE SET NULL;

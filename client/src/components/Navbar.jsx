@@ -55,6 +55,15 @@ export default function Navbar() {
                 {l.label}
               </NavLink>
             ))}
+          <button
+            className="nav-link nav-signout-mobile"
+            onClick={() => {
+              setOpen(false);
+              logout();
+            }}
+          >
+            {t("nav.signOut")}
+          </button>
         </div>
 
         <div className="nav-user">
@@ -62,7 +71,7 @@ export default function Navbar() {
             <strong>{user.name}</strong>
             <span className="role-badge">{t(`roles.${user.role}`)}</span>
           </div>
-          <button className="btn btn-sm" onClick={logout}>
+          <button className="btn btn-sm nav-signout-desktop" onClick={logout}>
             {t("nav.signOut")}
           </button>
         </div>

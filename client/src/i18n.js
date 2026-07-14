@@ -29,9 +29,10 @@ export const translations = {
     },
     login: {
       title: "أهلاً بعودتك",
-      subtitle: "أدخل كلمة المرور للوصول إلى صفحة المؤتمر.",
+      subtitle: "سجّل الدخول باسم المستخدم وكلمة المرور للوصول إلى صفحة المؤتمر.",
+      username: "اسم المستخدم",
       password: "كلمة المرور",
-      passwordHint: "خدام الوصول الكامل/المحدود: استخدموا رقم هاتفكم",
+      passwordHint: "خدام الوصول الكامل/المحدود: كلمة المرور هي رقم هاتفكم",
       signIn: "تسجيل الدخول",
       signingIn: "جاري تسجيل الدخول…",
       newHere: "جديد هنا؟",
@@ -50,21 +51,14 @@ export const translations = {
     },
     home: {
       linkInstructionsTitle: "التعليمات",
-      linkInstructionsDesc: "إرشادات للأيام القادمة.",
       linkTimelineTitle: "الجدول الزمني",
-      linkTimelineDesc: "ما الذي يحدث، ومتى.",
       linkTopicsTitle: "المواضيع الروحية",
-      linkTopicsDesc: "الجلسات التي ترافقنا خلال المؤتمر.",
-      linkGamesTitle: "الألعاب والتحديات",
-      linkGamesDesc: "ألعاب الفرق والمرح خلال الرحلة.",
+      linkGamesTitle: "الألعاب",
       linkTeamsTitle: "الفرق",
-      linkTeamsDesc: "الترتيب ومن في كل فريق.",
       linkBonusesTitle: "نقاط المكافأة",
-      linkBonusesDesc: "امنح نقاط مكافأة لشراء الهدايا.",
       heroWelcome: "أهلاً بك",
       heroGreeting: "الرب يباركك،",
-      heroSubtitle:
-        "ثلاثة أيام وليلتان — نصلي ونتعلم ونلعب ونجمع نقاط المكافأة لنشتري بها هدايا في النهاية.",
+      heroSubtitle: "نصلي ونتعلم ونلعب ونجمع نقاط المكافأة لنشتري بها هدايا في النهاية.",
       heroMeta: "الجمعة – الأحد · بيت الاستضافة",
       heroCtaTimeline: "عرض الجدول الزمني",
       heroCtaBonuses: "نقاطي",
@@ -72,10 +66,10 @@ export const translations = {
       exploreEyebrow: "استكشف",
       exploreTitle: "كل ما تحتاجه",
       openLink: "فتح ←",
-      galleryEyebrow: "معًا في المسيح",
-      galleryTitle: "وجوه العائلة",
+      galleryTitle: "SYF Family",
+      galleryLead: "ننمو معًا",
       galleryText:
-        "المؤتمر هو أشخاص — ضحك بعد الصلاة، وجبة مشتركة، ويد على كتفك. هذه بعض اللحظات التي تجعل من هذا الأسبوع بيتًا.",
+        "كل حديث، وكل صلاة، وكل لحظة نشاركها تقربنا من الله ومن بعضنا البعض. انضم إلينا لنكتشف معًا هدفه لحياتنا.",
       upNextEyebrow: "القادم",
       seeFullTimeline: "عرض الجدول الزمني الكامل ←",
       topicsPreviewEyebrow: "مواضيع نهاية هذا الأسبوع",
@@ -138,6 +132,7 @@ export const translations = {
     gameDetail: {
       backToGames: "→ العودة إلى الألعاب",
       notFound: "لم يتم العثور على اللعبة.",
+      noTeamsYet: "لا توجد فرق بعد.",
       roster: "التشكيلة",
       noPlayersYet: "لا يوجد لاعبون بعد.",
       managePlayers: "إدارة اللاعبين",
@@ -201,6 +196,11 @@ export const translations = {
       reasonPlaceholder: "السبب (اختياري)",
       noMembers: "لا يوجد مخدومون مسجَّلون بعد.",
       unassigned: "بدون فريق",
+      historyTitle: "السجل",
+      noHistoryYet: "لا يوجد سجل بعد.",
+      pointsPlaceholder: "النقاط",
+      confirm: "تأكيد",
+      byActor: "بواسطة",
     },
     settings: {
       title: "الإعدادات",
@@ -258,9 +258,10 @@ export const translations = {
     },
     login: {
       title: "Welcome back",
-      subtitle: "Enter your password to reach the conference hub.",
+      subtitle: "Sign in with your username and password to reach the conference hub.",
+      username: "Username",
       password: "Password",
-      passwordHint: "Full/limited access members: use your phone number",
+      passwordHint: "Full/limited access members: your password is your phone number",
       signIn: "Sign in",
       signingIn: "Signing in…",
       newHere: "New here?",
@@ -279,21 +280,14 @@ export const translations = {
     },
     home: {
       linkInstructionsTitle: "Instructions",
-      linkInstructionsDesc: "Guidelines for the days ahead.",
       linkTimelineTitle: "Timeline",
-      linkTimelineDesc: "See what's happening, and when.",
       linkTopicsTitle: "Spiritual Topics",
-      linkTopicsDesc: "The sessions carrying us through.",
-      linkGamesTitle: "Games & Challenges",
-      linkGamesDesc: "Team games and fun along the way.",
+      linkGamesTitle: "Games",
       linkTeamsTitle: "Teams",
-      linkTeamsDesc: "Standings and who's on each team.",
       linkBonusesTitle: "Bonus",
-      linkBonusesDesc: "Give bonus points to buy gifts.",
       heroWelcome: "Welcome",
       heroGreeting: "Blessings,",
-      heroSubtitle:
-        "Three days, two nights — pray, learn, play, and collect bonus points to spend on gifts at the end.",
+      heroSubtitle: "Pray, learn, play, and collect bonus points to spend on gifts at the end.",
       heroMeta: "Friday – Sunday · Retreat House",
       heroCtaTimeline: "View timeline",
       heroCtaBonuses: "My bonus",
@@ -301,10 +295,10 @@ export const translations = {
       exploreEyebrow: "Explore",
       exploreTitle: "Everything you need",
       openLink: "Open →",
-      galleryEyebrow: "Together in Christ",
-      galleryTitle: "Faces of the family",
+      galleryTitle: "SYF Family",
+      galleryLead: "Growing Together",
       galleryText:
-        "A conference is people — laughter after prayer, a shared meal, a hand on your shoulder. Here are a few of the moments that make this weekend home.",
+        "Every conversation, every prayer, and every shared moment brings us closer to God and to one another. Join us as we discover His purpose for our lives.",
       upNextEyebrow: "Up next",
       seeFullTimeline: "See full timeline →",
       topicsPreviewEyebrow: "This weekend's topics",
@@ -367,6 +361,7 @@ export const translations = {
     gameDetail: {
       backToGames: "→ Back to Games",
       notFound: "Game not found.",
+      noTeamsYet: "No teams yet.",
       roster: "Roster",
       noPlayersYet: "No players yet.",
       managePlayers: "Manage players",
@@ -430,6 +425,11 @@ export const translations = {
       reasonPlaceholder: "Reason (optional)",
       noMembers: "No served members have signed up yet.",
       unassigned: "Unassigned",
+      historyTitle: "History",
+      noHistoryYet: "No history yet.",
+      pointsPlaceholder: "Points",
+      confirm: "Confirm",
+      byActor: "by",
     },
     settings: {
       title: "Settings",
@@ -461,4 +461,23 @@ export function getT(lang) {
     }
     return node ?? path;
   };
+}
+
+const DAY_NAMES_AR_TO_EN = {
+  "الأحد": "Sunday",
+  "الاحد": "Sunday",
+  "الإثنين": "Monday",
+  "الاثنين": "Monday",
+  "الثلاثاء": "Tuesday",
+  "الأربعاء": "Wednesday",
+  "الاربعاء": "Wednesday",
+  "الخميس": "Thursday",
+  "الجمعة": "Friday",
+  "الجمعه": "Friday",
+  "السبت": "Saturday",
+};
+
+export function translateDayLabel(lang, label) {
+  if (lang !== "en" || !label) return label;
+  return DAY_NAMES_AR_TO_EN[label.trim()] || label;
 }

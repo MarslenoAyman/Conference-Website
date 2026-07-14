@@ -18,14 +18,14 @@ function publicUser(u) {
 
 router.post("/login", async (req, res, next) => {
   try {
-    const { password } = req.body || {};
-    if (!password || !password.trim()) {
-      return res.status(400).json({ error: "Password is required." });
+    const { username, password } = req.body || {};
+    if (!username || !username.trim() || !password || !password.trim()) {
+      return res.status(400).json({ error: "Username and password are required." });
     }
-    const { rows } = await pool.query("SELECT * FROM users WHERE password = $1", [password.trim()]);
+    const { rows } = await pool.query("SELECT * FROM users WHERE lower(name) = lower($1)", [username.trim()]);
     const user = rows[0];
-    if (!user) {
-      return res.status(401).json({ error: "Incorrect password." });
+    if (!user || user.password !== password.trim()) {
+      return res.status(401).json({ error: "Username or password is incorrect." });
     }
     const token = signToken(publicUser(user));
     res.json({ token, user: publicUser(user) });

@@ -20,7 +20,7 @@ function toGame(row) {
 }
 
 async function rosterView(gameId) {
-  const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name");
+  const { rows: teams } = await pool.query("SELECT * FROM game_teams WHERE game_id = $1 ORDER BY name", [gameId]);
   const { rows: rosterRows } = await pool.query(
     `SELECT gr.team_id, u.id, u.name FROM game_rosters gr
      JOIN users u ON u.id = gr.user_id WHERE gr.game_id = $1`,
@@ -93,7 +93,10 @@ router.get("/:id", async (req, res, next) => {
     const game = toGame(rows[0]);
     if (game.type === "roster") {
       const rosters = await rosterView(game.id);
-      game.rosters = req.user.role === "none" ? rosters.filter((r) => r.teamId === req.user.teamId) : rosters;
+      game.rosters =
+        req.user.role === "none"
+          ? rosters.filter((r) => r.players.some((p) => p.id === req.user.id))
+          : rosters;
     } else {
       const { matches, standings } = await matchupView(game.id, game.format);
       game.matches = matches;
@@ -163,15 +166,68 @@ router.delete("/:id", requireRole("full"), async (req, res, next) => {
   }
 });
 
+router.post("/:id/teams", requireRole("full"), async (req, res, next) => {
+  try {
+    const { name, color } = req.body || {};
+    if (!name || !name.trim()) return res.status(400).json({ error: "Team name is required." });
+    await pool.query("INSERT INTO game_teams (id, game_id, name, color) VALUES ($1, $2, $3, $4)", [
+      randomUUID(),
+      req.params.id,
+      name.trim(),
+      color || "#5b6b4a",
+    ]);
+    res.status(201).json({ rosters: await rosterView(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/:id/teams/:teamId", requireRole("full"), async (req, res, next) => {
+  try {
+    const { name, color } = req.body || {};
+    const { rows: existingRows } = await pool.query("SELECT * FROM game_teams WHERE id = $1 AND game_id = $2", [
+      req.params.teamId,
+      req.params.id,
+    ]);
+    if (!existingRows[0]) return res.status(404).json({ error: "Team not found." });
+    const existing = existingRows[0];
+    const nextName = name !== undefined && name.trim() ? name.trim() : existing.name;
+    const nextColor = color !== undefined ? color : existing.color;
+    await pool.query("UPDATE game_teams SET name = $1, color = $2 WHERE id = $3", [
+      nextName,
+      nextColor,
+      req.params.teamId,
+    ]);
+    res.json({ rosters: await rosterView(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/:id/teams/:teamId", requireRole("full"), async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query("DELETE FROM game_teams WHERE id = $1 AND game_id = $2", [
+      req.params.teamId,
+      req.params.id,
+    ]);
+    if (rowCount === 0) return res.status(404).json({ error: "Team not found." });
+    res.json({ rosters: await rosterView(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/:id/roster", requireRole("full"), async (req, res, next) => {
   try {
     const { teamId, userId } = req.body || {};
     if (!teamId || !userId) return res.status(400).json({ error: "A team and member are required." });
-    const { rows: userRows } = await pool.query("SELECT team_id FROM users WHERE id = $1", [userId]);
+    const { rows: teamRows } = await pool.query("SELECT id FROM game_teams WHERE id = $1 AND game_id = $2", [
+      teamId,
+      req.params.id,
+    ]);
+    if (!teamRows[0]) return res.status(404).json({ error: "Team not found." });
+    const { rows: userRows } = await pool.query("SELECT id FROM users WHERE id = $1", [userId]);
     if (!userRows[0]) return res.status(404).json({ error: "Member not found." });
-    if (userRows[0].team_id !== teamId) {
-      return res.status(400).json({ error: "This member is not on that team." });
-    }
     await pool.query(
       `INSERT INTO game_rosters (game_id, team_id, user_id) VALUES ($1, $2, $3)
        ON CONFLICT (game_id, user_id) DO UPDATE SET team_id = EXCLUDED.team_id`,
