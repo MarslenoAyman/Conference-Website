@@ -132,6 +132,20 @@ CREATE TABLE IF NOT EXISTS game_players (
   UNIQUE (game_id, user_id)
 );
 
+-- Competitors formed on fixture generation for player games: one player
+-- (singles) or two players (doubles / "couple"). player2_id null = singles.
+CREATE TABLE IF NOT EXISTS game_pairs (
+  id TEXT PRIMARY KEY,
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  player1_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  player2_id TEXT REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Match competitor slots for player games (reference game_pairs; nullable for
+-- cup bracket TBD slots).
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS pair_a_id TEXT REFERENCES game_pairs(id) ON DELETE SET NULL;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS pair_b_id TEXT REFERENCES game_pairs(id) ON DELETE SET NULL;
+
 -- Live goal events for the current competition (cleared with their match on regenerate).
 CREATE TABLE IF NOT EXISTS match_goals (
   id TEXT PRIMARY KEY,

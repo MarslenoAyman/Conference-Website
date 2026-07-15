@@ -202,6 +202,7 @@ export const translations = {
       noPlayersInPool: "لم تتم إضافة لاعبين بعد.",
       addPlayer: "إضافة لاعب",
       removePlayer: "إزالة",
+      mode: "النوع",
       needTwoPlayers: "أضف لاعبين على الأقل ثم اختر الدوري أو الكأس.",
     },
     teams: {
@@ -479,6 +480,7 @@ export const translations = {
       noPlayersInPool: "No players added yet.",
       addPlayer: "Add player",
       removePlayer: "Remove",
+      mode: "Mode",
       needTwoPlayers: "Add at least two players, then choose League or Cup.",
     },
     teams: {

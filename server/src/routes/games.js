@@ -338,14 +338,26 @@ function shuffle(arr) {
   return a;
 }
 
-// View for a player game's competition: player-vs-player matches + (league) win standings.
+// View for a player game's competition: competitor (single or pair) matches +
+// (league) win standings. A competitor is a game_pairs row: one player for
+// singles, two for doubles. Match sides are arrays of the competitor's players
+// so the shared MatchCard shows "A" or "A & B".
 async function playerCompetitionView(gameId, format) {
-  const { rows: players } = await pool.query(
-    "SELECT gp.user_id AS id, u.name FROM game_players gp JOIN users u ON u.id = gp.user_id WHERE gp.game_id = $1",
+  const { rows: pairs } = await pool.query(
+    `SELECT gp.id, u1.id AS p1_id, u1.name AS p1_name, u2.id AS p2_id, u2.name AS p2_name
+     FROM game_pairs gp
+     JOIN users u1 ON u1.id = gp.player1_id
+     LEFT JOIN users u2 ON u2.id = gp.player2_id
+     WHERE gp.game_id = $1`,
     [gameId]
   );
-  const nameById = Object.fromEntries(players.map((p) => [p.id, p.name]));
-  const side = (uid) => (uid && nameById[uid] ? [{ id: uid, name: nameById[uid] }] : []);
+  const pairById = {};
+  for (const p of pairs) {
+    const players = [{ id: p.p1_id, name: p.p1_name }];
+    if (p.p2_id) players.push({ id: p.p2_id, name: p.p2_name });
+    pairById[p.id] = { name: players.map((x) => x.name).join(" & "), players };
+  }
+  const side = (pairId) => (pairId && pairById[pairId] ? pairById[pairId].players : []);
 
   const { rows: matches } = await pool.query(
     "SELECT * FROM matches WHERE game_id = $1 ORDER BY round, bracket_pos, created_at",
@@ -356,18 +368,18 @@ async function playerCompetitionView(gameId, format) {
     round: m.round,
     status: m.status,
     winnerSide: m.winner_side,
-    sideA: side(m.player_a_id),
-    sideB: side(m.player_b_id),
+    sideA: side(m.pair_a_id),
+    sideB: side(m.pair_b_id),
   }));
 
   let standings = null;
   if (format === "league") {
     const tally = new Map();
-    for (const p of players) tally.set(p.id, { id: p.id, name: p.name, played: 0, wins: 0, losses: 0 });
+    for (const p of pairs) tally.set(p.id, { id: p.id, name: pairById[p.id].name, played: 0, wins: 0, losses: 0 });
     for (const m of matches) {
       if (m.status !== "done" || !m.winner_side) continue;
-      const winId = m.winner_side === "a" ? m.player_a_id : m.player_b_id;
-      const loseId = m.winner_side === "a" ? m.player_b_id : m.player_a_id;
+      const winId = m.winner_side === "a" ? m.pair_a_id : m.pair_b_id;
+      const loseId = m.winner_side === "a" ? m.pair_b_id : m.pair_a_id;
       if (winId && tally.has(winId)) {
         tally.get(winId).wins += 1;
         tally.get(winId).played += 1;
@@ -384,7 +396,7 @@ async function playerCompetitionView(gameId, format) {
   return { matches: matchList, standings };
 }
 
-// Advance cup winners into the next round's player slots (recomputed from scratch).
+// Advance cup winners into the next round's competitor slots (recomputed fresh).
 async function recomputePlayerBracket(gameId) {
   const { rows: matches } = await pool.query(
     "SELECT * FROM matches WHERE game_id = $1 ORDER BY round, bracket_pos",
@@ -394,21 +406,21 @@ async function recomputePlayerBracket(gameId) {
   for (const m of matches) {
     const target = m.next_match_id && byId[m.next_match_id];
     if (!target) continue;
-    if (m.next_slot === "a") target.player_a_id = null;
-    else if (m.next_slot === "b") target.player_b_id = null;
+    if (m.next_slot === "a") target.pair_a_id = null;
+    else if (m.next_slot === "b") target.pair_b_id = null;
   }
   for (const m of matches) {
     if (m.status !== "done" || !m.winner_side) continue;
     const target = m.next_match_id && byId[m.next_match_id];
     if (!target) continue;
-    const winId = m.winner_side === "a" ? m.player_a_id : m.player_b_id;
-    if (m.next_slot === "a") target.player_a_id = winId;
-    else if (m.next_slot === "b") target.player_b_id = winId;
+    const winId = m.winner_side === "a" ? m.pair_a_id : m.pair_b_id;
+    if (m.next_slot === "a") target.pair_a_id = winId;
+    else if (m.next_slot === "b") target.pair_b_id = winId;
   }
   for (const m of matches) {
-    await pool.query("UPDATE matches SET player_a_id = $1, player_b_id = $2 WHERE id = $3", [
-      m.player_a_id,
-      m.player_b_id,
+    await pool.query("UPDATE matches SET pair_a_id = $1, pair_b_id = $2 WHERE id = $3", [
+      m.pair_a_id,
+      m.pair_b_id,
       m.id,
     ]);
   }
@@ -416,6 +428,7 @@ async function recomputePlayerBracket(gameId) {
 
 async function resetPlayerFixtures(gameId) {
   await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
+  await pool.query("DELETE FROM game_pairs WHERE game_id = $1", [gameId]);
   await pool.query("UPDATE games SET fixtures_ready = false WHERE id = $1", [gameId]);
 }
 
@@ -427,29 +440,61 @@ async function playerPool(gameId) {
   return rows;
 }
 
-// Build randomised League (round-robin) or Cup (single-elimination) fixtures between players.
-async function generatePlayerFixtures(gameId, format) {
-  await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
+// Form the competitor list: singles = one game_pair per player; doubles = players
+// shuffled and paired two at a time (a leftover odd player becomes a solo pair).
+async function buildPlayerPairs(gameId, teamSize) {
+  await pool.query("DELETE FROM game_pairs WHERE game_id = $1", [gameId]);
   const { rows } = await pool.query("SELECT user_id FROM game_players WHERE game_id = $1", [gameId]);
-  const playerIds = shuffle(rows.map((r) => r.user_id));
+  const players = shuffle(rows.map((r) => r.user_id));
+  const pairIds = [];
+  if (teamSize === 2) {
+    for (let i = 0; i < players.length; i += 2) {
+      const id = randomUUID();
+      await pool.query("INSERT INTO game_pairs (id, game_id, player1_id, player2_id) VALUES ($1, $2, $3, $4)", [
+        id,
+        gameId,
+        players[i],
+        players[i + 1] || null,
+      ]);
+      pairIds.push(id);
+    }
+  } else {
+    for (const p of players) {
+      const id = randomUUID();
+      await pool.query("INSERT INTO game_pairs (id, game_id, player1_id, player2_id) VALUES ($1, $2, $3, NULL)", [
+        id,
+        gameId,
+        p,
+      ]);
+      pairIds.push(id);
+    }
+  }
+  return shuffle(pairIds);
+}
+
+// Build randomised League (round-robin) or Cup (single-elimination) fixtures
+// between the competitors (singles players or doubles pairs).
+async function generatePlayerFixtures(gameId, format, teamSize) {
+  await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
+  const ids = await buildPlayerPairs(gameId, teamSize);
 
   if (format === "league") {
     let pos = 0;
-    for (let i = 0; i < playerIds.length; i++) {
-      for (let j = i + 1; j < playerIds.length; j++) {
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
         await pool.query(
-          "INSERT INTO matches (id, game_id, round, player_a_id, player_b_id, bracket_pos) VALUES ($1, $2, 1, $3, $4, $5)",
-          [randomUUID(), gameId, playerIds[i], playerIds[j], pos++]
+          "INSERT INTO matches (id, game_id, round, pair_a_id, pair_b_id, bracket_pos) VALUES ($1, $2, 1, $3, $4, $5)",
+          [randomUUID(), gameId, ids[i], ids[j], pos++]
         );
       }
     }
     return;
   }
 
-  const n = playerIds.length;
+  const n = ids.length;
   const size = nextPow2(n);
   const order = seedOrder(size);
-  const slots = order.map((rank) => (rank <= n ? playerIds[rank - 1] : null));
+  const slots = order.map((rank) => (rank <= n ? ids[rank - 1] : null));
   const roundCount = Math.log2(size);
 
   const rounds = [];
@@ -458,16 +503,16 @@ async function generatePlayerFixtures(gameId, format) {
     rounds.push(Array.from({ length: count }, () => randomUUID()));
   }
   for (let r = roundCount - 1; r >= 0; r--) {
-    const ids = rounds[r];
-    for (let k = 0; k < ids.length; k++) {
+    const rIds = rounds[r];
+    for (let k = 0; k < rIds.length; k++) {
       const nextId = r < roundCount - 1 ? rounds[r + 1][Math.floor(k / 2)] : null;
       const nextSlot = r < roundCount - 1 ? (k % 2 === 0 ? "a" : "b") : null;
       const pA = r === 0 ? slots[2 * k] || null : null;
       const pB = r === 0 ? slots[2 * k + 1] || null : null;
       await pool.query(
-        `INSERT INTO matches (id, game_id, round, player_a_id, player_b_id, next_match_id, next_slot, bracket_pos)
+        `INSERT INTO matches (id, game_id, round, pair_a_id, pair_b_id, next_match_id, next_slot, bracket_pos)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [ids[k], gameId, r + 1, pA, pB, nextId, nextSlot, k]
+        [rIds[k], gameId, r + 1, pA, pB, nextId, nextSlot, k]
       );
     }
   }
@@ -709,14 +754,20 @@ router.post("/:id/generate", requireRole("full"), async (req, res, next) => {
     const type = gameRows[0].type;
 
     if (type === "players") {
+      const teamSize = Number(req.body?.teamSize) === 2 ? 2 : 1;
       const { rows: cnt } = await pool.query("SELECT COUNT(*)::int AS n FROM game_players WHERE game_id = $1", [
         req.params.id,
       ]);
-      if (cnt[0].n < 2) return res.status(400).json({ error: "Add at least two players first." });
-      await generatePlayerFixtures(req.params.id, format);
+      const min = teamSize === 2 ? 4 : 2;
+      if (cnt[0].n < min) {
+        return res.status(400).json({
+          error: teamSize === 2 ? "Add at least four players for couples." : "Add at least two players first.",
+        });
+      }
+      await generatePlayerFixtures(req.params.id, format, teamSize);
       const { rows } = await pool.query(
-        "UPDATE games SET format = $1, fixtures_ready = true WHERE id = $2 RETURNING *",
-        [format, req.params.id]
+        "UPDATE games SET format = $1, team_size = $2, fixtures_ready = true WHERE id = $3 RETURNING *",
+        [format, teamSize, req.params.id]
       );
       const game = toGame(rows[0]);
       game.players = await playerPool(game.id);
@@ -814,12 +865,12 @@ router.put("/:id/matches/:matchId", requireRole("full"), async (req, res, next) 
           return res.status(400).json({ error: "A valid winner is required." });
         }
         const { rows: mRows } = await pool.query(
-          "SELECT player_a_id, player_b_id FROM matches WHERE id = $1 AND game_id = $2",
+          "SELECT pair_a_id, pair_b_id FROM matches WHERE id = $1 AND game_id = $2",
           [req.params.matchId, req.params.id]
         );
         if (!mRows[0]) return res.status(404).json({ error: "Match not found." });
-        if (!mRows[0].player_a_id || !mRows[0].player_b_id) {
-          return res.status(400).json({ error: "Both players are needed first." });
+        if (!mRows[0].pair_a_id || !mRows[0].pair_b_id) {
+          return res.status(400).json({ error: "Both sides are needed first." });
         }
         await pool.query("UPDATE matches SET status = 'done', winner_side = $1 WHERE id = $2 AND game_id = $3", [
           winnerSide,

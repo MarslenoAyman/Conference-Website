@@ -33,6 +33,7 @@ export default function GameDetail() {
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamColor, setNewTeamColor] = useState(PALETTE[0]);
   const [chosenFormat, setChosenFormat] = useState("league");
+  const [chosenTeamSize, setChosenTeamSize] = useState(1);
   const [resultMatch, setResultMatch] = useState(null);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
 
@@ -46,6 +47,7 @@ export default function GameDetail() {
       .then(([g, usersRes]) => {
         setGame(g.game);
         setChosenFormat(g.game.format || "league");
+        setChosenTeamSize(g.game.teamSize === 2 ? 2 : 1);
         if (usersRes) setAllUsers(usersRes.users || []);
       })
       .catch((err) => setError(tError(err.message)))
@@ -56,7 +58,7 @@ export default function GameDetail() {
   async function generateFixtures() {
     if (game.fixturesReady && !confirm(t("gameDetail.regenerateWarning"))) return;
     try {
-      const { game: fresh } = await api.generateFixtures(token, id, chosenFormat);
+      const { game: fresh } = await api.generateFixtures(token, id, chosenFormat, chosenTeamSize);
       setGame((prev) => ({ ...prev, ...fresh }));
     } catch (err) {
       setError(tError(err.message));
@@ -219,7 +221,7 @@ export default function GameDetail() {
     const final = game.matches.find((m) => m.round === maxRound);
     if (final && final.status === "done" && final.winnerSide) {
       const side = final.winnerSide === "a" ? final.sideA : final.sideB;
-      cupChampion = side[0]?.name || null;
+      cupChampion = side.length ? side.map((p) => p.name).join(" & ") : null;
     }
   }
 
@@ -430,16 +432,30 @@ export default function GameDetail() {
               <h2 className="competition-title">{t("gameDetail.competition")}</h2>
               <div className="competition-stats">
                 {game.fixturesReady && (
-                  <span>
-                    {t("gameDetail.system")}:{" "}
-                    <strong>{game.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
-                  </span>
+                  <>
+                    <span>
+                      {t("gameDetail.mode")}:{" "}
+                      <strong>{game.teamSize === 2 ? t("gameDetail.doubles") : t("gameDetail.singles")}</strong>
+                    </span>
+                    <span>
+                      {t("gameDetail.system")}:{" "}
+                      <strong>{game.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
+                    </span>
+                  </>
                 )}
               </div>
             </div>
 
             {canEdit && game.playerCount >= 2 && (
               <div className="competition-controls">
+                <div className="format-toggle">
+                  <button className={chosenTeamSize === 1 ? "active" : ""} onClick={() => setChosenTeamSize(1)}>
+                    {t("gameDetail.singles")}
+                  </button>
+                  <button className={chosenTeamSize === 2 ? "active" : ""} onClick={() => setChosenTeamSize(2)}>
+                    {t("gameDetail.doubles")}
+                  </button>
+                </div>
                 <div className="format-toggle">
                   <button className={chosenFormat === "league" ? "active" : ""} onClick={() => setChosenFormat("league")}>
                     {t("gameDetail.league")}
