@@ -6,7 +6,7 @@ import { api } from "../api.js";
 import { GAME_ICONS, GAME_ICON_BADGE_CLASS, GAME_ICON_KEYS } from "../gameIcons.jsx";
 import Alert from "../components/Alert.jsx";
 
-const empty = { name: "", description: "", type: "roster", icon: "football", manager: "" };
+const empty = { name: "", description: "", type: "roster", icon: "football", manager: "", singlesOnly: false, allServedView: false };
 
 export default function Games() {
   const { user, token } = useAuth();
@@ -16,6 +16,8 @@ export default function Games() {
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(empty);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addDraft, setAddDraft] = useState(empty);
 
   const canEdit = user.role === "full";
 
@@ -23,6 +25,19 @@ export default function Games() {
     api.getGames(token).then((d) => setGames(d.games)).finally(() => setLoading(false));
   }
   useEffect(load, []);
+
+  async function createGame(e) {
+    e.preventDefault();
+    if (!addDraft.name.trim()) return;
+    try {
+      const { game } = await api.addGame(token, addDraft);
+      setGames((prev) => [...prev, game]);
+      setAddDraft(empty);
+      setShowAdd(false);
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
 
   function startEdit(game, e) {
     e.preventDefault();
@@ -58,6 +73,100 @@ export default function Games() {
       </h1>
 
       <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
+
+      {canEdit && !loading && (
+        <div className="add-game-wrap">
+          {showAdd ? (
+            <form className="add-game-form card" onSubmit={createGame}>
+              <div className="modal-section-title" style={{ marginTop: 0 }}>
+                {t("games.newGameTitle")}
+              </div>
+              <div className="add-game-grid">
+                <div className="field">
+                  <label>{t("games.nameLabel")}</label>
+                  <input
+                    value={addDraft.name}
+                    onChange={(e) => setAddDraft({ ...addDraft, name: e.target.value })}
+                    placeholder={t("games.namePlaceholder")}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t("games.managerLabel")}</label>
+                  <input
+                    value={addDraft.manager}
+                    onChange={(e) => setAddDraft({ ...addDraft, manager: e.target.value })}
+                    placeholder={t("games.managerPlaceholder")}
+                  />
+                </div>
+                <div className="field">
+                  <label>{t("games.systemLabel")}</label>
+                  <select value={addDraft.type} onChange={(e) => setAddDraft({ ...addDraft, type: e.target.value })}>
+                    <option value="roster">{t("games.typeRoster")}</option>
+                    <option value="players">{t("games.typePlayers")}</option>
+                    <option value="duel">{t("games.typeDuel")}</option>
+                    <option value="matchup">{t("games.typeMatchup")}</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>{t("games.iconLabel")}</label>
+                  <select value={addDraft.icon} onChange={(e) => setAddDraft({ ...addDraft, icon: e.target.value })}>
+                    {GAME_ICON_KEYS.map((key) => (
+                      <option key={key} value={key}>
+                        {t(`games.icon.${key}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="field">
+                <label>{t("games.descriptionLabel")}</label>
+                <textarea
+                  rows={2}
+                  value={addDraft.description}
+                  onChange={(e) => setAddDraft({ ...addDraft, description: e.target.value })}
+                />
+              </div>
+              {addDraft.type === "players" && (
+                <label className="check-line">
+                  <input
+                    type="checkbox"
+                    checked={addDraft.singlesOnly}
+                    onChange={(e) => setAddDraft({ ...addDraft, singlesOnly: e.target.checked })}
+                  />
+                  {t("games.singlesOnlyLabel")}
+                </label>
+              )}
+              <label className="check-line">
+                <input
+                  type="checkbox"
+                  checked={addDraft.allServedView}
+                  onChange={(e) => setAddDraft({ ...addDraft, allServedView: e.target.checked })}
+                />
+                {t("games.allServedViewLabel")}
+              </label>
+              <div className="card-actions">
+                <button className="btn btn-primary btn-sm" type="submit">
+                  {t("games.createGame")}
+                </button>
+                <button
+                  className="btn btn-sm"
+                  type="button"
+                  onClick={() => {
+                    setShowAdd(false);
+                    setAddDraft(empty);
+                  }}
+                >
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+              + {t("games.addGameButton")}
+            </button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <p className="center-note">{t("common.loading")}</p>

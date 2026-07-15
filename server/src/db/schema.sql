@@ -79,6 +79,8 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS fixtures_ready BOOLEAN NOT NULL DEFAU
 -- When true, every served member can see this game's full details (e.g. the
 -- Card Game), not just participants.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS all_served_view BOOLEAN NOT NULL DEFAULT false;
+-- When true, a players-type game offers singles only (no doubles/couple), e.g. Tawla.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS singles_only BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS game_rosters (
   game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,

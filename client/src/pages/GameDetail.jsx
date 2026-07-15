@@ -469,10 +469,12 @@ export default function GameDetail() {
               <div className="competition-stats">
                 {game.fixturesReady && (
                   <>
-                    <span>
-                      {t("gameDetail.mode")}:{" "}
-                      <strong>{game.teamSize === 2 ? t("gameDetail.doubles") : t("gameDetail.singles")}</strong>
-                    </span>
+                    {!game.singlesOnly && (
+                      <span>
+                        {t("gameDetail.mode")}:{" "}
+                        <strong>{game.teamSize === 2 ? t("gameDetail.doubles") : t("gameDetail.singles")}</strong>
+                      </span>
+                    )}
                     <span>
                       {t("gameDetail.system")}:{" "}
                       <strong>{game.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
@@ -484,14 +486,16 @@ export default function GameDetail() {
 
             {canEdit && game.playerCount >= 2 && (
               <div className="competition-controls">
-                <div className="format-toggle">
-                  <button className={chosenTeamSize === 1 ? "active" : ""} onClick={() => setChosenTeamSize(1)}>
-                    {t("gameDetail.singles")}
-                  </button>
-                  <button className={chosenTeamSize === 2 ? "active" : ""} onClick={() => setChosenTeamSize(2)}>
-                    {t("gameDetail.doubles")}
-                  </button>
-                </div>
+                {!game.singlesOnly && (
+                  <div className="format-toggle">
+                    <button className={chosenTeamSize === 1 ? "active" : ""} onClick={() => setChosenTeamSize(1)}>
+                      {t("gameDetail.singles")}
+                    </button>
+                    <button className={chosenTeamSize === 2 ? "active" : ""} onClick={() => setChosenTeamSize(2)}>
+                      {t("gameDetail.doubles")}
+                    </button>
+                  </div>
+                )}
                 <div className="format-toggle">
                   <button className={chosenFormat === "league" ? "active" : ""} onClick={() => setChosenFormat("league")}>
                     {t("gameDetail.league")}

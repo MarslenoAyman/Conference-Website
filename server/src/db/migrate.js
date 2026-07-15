@@ -84,12 +84,15 @@ const TOPICS = [
   ["هل الله حسب المزاج؟", "لم يتحدد", "الله ثابت لا يتغير، وينظر إلى قلبك أكثر من إنجازاتك."],
 ];
 
+// name, icon, type, format, teamSize, manager, singlesOnly
 const GAMES = [
-  ["كرة القدم", "football", "roster", "league", 1],
-  ["الكرة الطائرة", "volleyball", "roster", "league", 1],
-  ["الشطرنج", "chess", "duel", "league", 1],
-  ["البلياردو", "billiard", "matchup", "league", 1],
-  ["تنس الطاولة", "pingpong", "matchup", "league", 1],
+  ["كرة القدم", "football", "roster", "league", 1, "Mr Gazo", false],
+  ["الكرة الطائرة", "volleyball", "roster", "league", 1, "", false],
+  ["الشطرنج", "chess", "players", "league", 1, "Mr Weza", false],
+  ["البلياردو", "billiard", "players", "league", 1, "Mr Marsleno Ayman", false],
+  ["تنس الطاولة", "pingpong", "players", "league", 1, "Mr Soliman Hefzy", false],
+  ["الدومينو", "domino", "players", "league", 1, "Fr Philopater Girgis & Mr Adry", false],
+  ["الطاولة", "tawla", "players", "league", 1, "Fr Philopater Girgis", true],
 ];
 
 const TEAMS = [
@@ -159,10 +162,10 @@ async function seedIfEmpty() {
     ]);
   }
 
-  for (const [name, icon, type, format, teamSize] of GAMES) {
+  for (const [name, icon, type, format, teamSize, manager, singlesOnly] of GAMES) {
     await pool.query(
-      "INSERT INTO games (id, name, icon, type, format, team_size) VALUES ($1, $2, $3, $4, $5, $6)",
-      [randomUUID(), name, icon, type, format, teamSize]
+      "INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [randomUUID(), name, icon, type, format, teamSize, manager, singlesOnly]
     );
   }
 }

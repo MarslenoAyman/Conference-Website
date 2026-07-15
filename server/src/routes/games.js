@@ -19,6 +19,7 @@ function toGame(row) {
     manager: row.manager || "",
     fixturesReady: row.fixtures_ready || false,
     allServedView: row.all_served_view || false,
+    singlesOnly: row.singles_only || false,
   };
 }
 
@@ -599,11 +600,12 @@ router.get("/:id", async (req, res, next) => {
 
 router.post("/", requireRole("full"), async (req, res, next) => {
   try {
-    const { name, when, description, type, icon, format, teamSize, manager } = req.body || {};
+    const { name, when, description, type, icon, format, teamSize, manager, singlesOnly, allServedView } =
+      req.body || {};
     if (!name || !name.trim()) return res.status(400).json({ error: "Game name is required." });
     const { rows } = await pool.query(
-      `INSERT INTO games (id, name, when_text, description, type, icon, format, team_size, manager)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO games (id, name, when_text, description, type, icon, format, team_size, manager, singles_only, all_served_view)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
         randomUUID(),
         name.trim(),
@@ -612,8 +614,10 @@ router.post("/", requireRole("full"), async (req, res, next) => {
         type || "roster",
         icon || "ball",
         format || "league",
-        Number(teamSize) === 2 ? 2 : 1,
+        singlesOnly ? 1 : Number(teamSize) === 2 ? 2 : 1,
         (manager || "").trim(),
+        !!singlesOnly,
+        !!allServedView,
       ]
     );
     res.status(201).json({ game: toGame(rows[0]) });
@@ -624,7 +628,8 @@ router.post("/", requireRole("full"), async (req, res, next) => {
 
 router.put("/:id", requireRole("full"), async (req, res, next) => {
   try {
-    const { name, when, description, type, icon, format, teamSize, manager } = req.body || {};
+    const { name, when, description, type, icon, format, teamSize, manager, singlesOnly, allServedView } =
+      req.body || {};
     const { rows: existingRows } = await pool.query("SELECT * FROM games WHERE id = $1", [req.params.id]);
     if (!existingRows[0]) return res.status(404).json({ error: "Game not found." });
     const existing = existingRows[0];
@@ -634,12 +639,20 @@ router.put("/:id", requireRole("full"), async (req, res, next) => {
     const nextType = type !== undefined ? type : existing.type;
     const nextIcon = icon !== undefined ? icon : existing.icon;
     const nextFormat = format !== undefined ? format : existing.format;
-    const nextTeamSize = teamSize !== undefined ? (Number(teamSize) === 2 ? 2 : 1) : existing.team_size;
+    const nextSinglesOnly = singlesOnly !== undefined ? !!singlesOnly : existing.singles_only;
+    const nextAllServed = allServedView !== undefined ? !!allServedView : existing.all_served_view;
+    const nextTeamSize = nextSinglesOnly
+      ? 1
+      : teamSize !== undefined
+      ? Number(teamSize) === 2
+        ? 2
+        : 1
+      : existing.team_size;
     const nextManager = manager !== undefined ? manager.trim() : existing.manager;
     const { rows } = await pool.query(
-      `UPDATE games SET name = $1, when_text = $2, description = $3, type = $4, icon = $5, format = $6, team_size = $7, manager = $8
-       WHERE id = $9 RETURNING *`,
-      [nextName, nextWhen, nextDescription, nextType, nextIcon, nextFormat, nextTeamSize, nextManager, req.params.id]
+      `UPDATE games SET name = $1, when_text = $2, description = $3, type = $4, icon = $5, format = $6, team_size = $7, manager = $8, singles_only = $9, all_served_view = $10
+       WHERE id = $11 RETURNING *`,
+      [nextName, nextWhen, nextDescription, nextType, nextIcon, nextFormat, nextTeamSize, nextManager, nextSinglesOnly, nextAllServed, req.params.id]
     );
     res.json({ game: toGame(rows[0]) });
   } catch (err) {

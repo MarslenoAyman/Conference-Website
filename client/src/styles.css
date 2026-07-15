@@ -1049,10 +1049,53 @@ button {
   background: #fff;
 }
 .field input:focus,
+.field textarea:focus,
+.field select:focus,
 .add-row input:focus,
 .add-row textarea:focus {
   outline: 2px solid var(--olive);
   outline-offset: 1px;
+}
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 15px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: inherit;
+}
+.add-game-wrap {
+  margin: var(--space-md) 0;
+}
+.add-game-form {
+  padding: var(--space-lg);
+}
+.add-game-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.check-line input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--olive);
+}
+@media (max-width: 600px) {
+  .add-game-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .alert-banner {
   display: flex;
