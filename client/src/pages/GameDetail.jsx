@@ -34,6 +34,7 @@ export default function GameDetail() {
   const [newTeamColor, setNewTeamColor] = useState(PALETTE[0]);
   const [chosenFormat, setChosenFormat] = useState("league");
   const [resultMatch, setResultMatch] = useState(null);
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
 
   const canEdit = user.role === "full";
 
@@ -57,6 +58,37 @@ export default function GameDetail() {
     try {
       const { game: fresh } = await api.generateFixtures(token, id, chosenFormat);
       setGame((prev) => ({ ...prev, ...fresh }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
+  async function addPlayer(userId) {
+    try {
+      const { players } = await api.addGamePlayer(token, id, userId);
+      setGame((prev) => ({
+        ...prev,
+        players,
+        playerCount: players.length,
+        fixturesReady: false,
+        matches: [],
+        standings: prev.format === "league" ? [] : null,
+      }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function removePlayer(userId) {
+    try {
+      const { players } = await api.removeGamePlayer(token, id, userId);
+      setGame((prev) => ({
+        ...prev,
+        players,
+        playerCount: players.length,
+        fixturesReady: false,
+        matches: [],
+        standings: prev.format === "league" ? [] : null,
+      }));
     } catch (err) {
       setError(tError(err.message));
     }
@@ -177,7 +209,12 @@ export default function GameDetail() {
   const manageTeam = manageTeamId ? game.rosters.find((r) => r.teamId === manageTeamId) : null;
 
   let cupChampion = null;
-  if (game.type === "roster" && game.format === "cup" && game.fixturesReady && game.matches?.length) {
+  if (
+    (game.type === "roster" || game.type === "players") &&
+    game.format === "cup" &&
+    game.fixturesReady &&
+    game.matches?.length
+  ) {
     const maxRound = Math.max(...game.matches.map((m) => m.round));
     const final = game.matches.find((m) => m.round === maxRound);
     if (final && final.status === "done" && final.winnerSide) {
@@ -354,6 +391,120 @@ export default function GameDetail() {
 
           <TopScorers scorers={game.scorers} t={t} />
         </>
+      ) : game.type === "players" ? (
+        <>
+          <div className="section-gap">
+            <div className="competition-head">
+              <h2 className="competition-title">{t("gameDetail.players")}</h2>
+              <div className="competition-stats">
+                <span>
+                  {t("gameDetail.playersCount")}: <strong>{game.playerCount}</strong>
+                </span>
+              </div>
+            </div>
+            <div className="card">
+              {game.players.length === 0 ? (
+                <p className="empty-note">{t("gameDetail.noPlayersInPool")}</p>
+              ) : (
+                game.players.map((p) => (
+                  <div className="member-row" key={p.id}>
+                    <span>{p.name}</span>
+                    {canEdit && (
+                      <button className="btn btn-sm btn-danger" onClick={() => removePlayer(p.id)}>
+                        {t("gameDetail.removePlayer")}
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+              {canEdit && (
+                <button className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => setShowAddPlayer(true)}>
+                  + {t("gameDetail.addPlayer")}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="section-gap">
+            <div className="competition-head">
+              <h2 className="competition-title">{t("gameDetail.competition")}</h2>
+              <div className="competition-stats">
+                {game.fixturesReady && (
+                  <span>
+                    {t("gameDetail.system")}:{" "}
+                    <strong>{game.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {canEdit && game.playerCount >= 2 && (
+              <div className="competition-controls">
+                <div className="format-toggle">
+                  <button className={chosenFormat === "league" ? "active" : ""} onClick={() => setChosenFormat("league")}>
+                    {t("gameDetail.league")}
+                  </button>
+                  <button className={chosenFormat === "cup" ? "active" : ""} onClick={() => setChosenFormat("cup")}>
+                    {t("gameDetail.cup")}
+                  </button>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={generateFixtures}>
+                  {game.fixturesReady
+                    ? t("gameDetail.regenerate")
+                    : chosenFormat === "cup"
+                    ? t("gameDetail.generateCup")
+                    : t("gameDetail.generateLeague")}
+                </button>
+              </div>
+            )}
+
+            {game.playerCount < 2 ? (
+              <p className="empty-note">{t("gameDetail.needTwoPlayers")}</p>
+            ) : !game.fixturesReady ? (
+              <p className="empty-note">{t("gameDetail.notGeneratedYet")}</p>
+            ) : game.format === "cup" ? (
+              <>
+                {cupChampion && (
+                  <div className="champion-banner">
+                    🏆 {t("gameDetail.champion")}: <strong>{cupChampion}</strong>
+                  </div>
+                )}
+                <BracketView
+                  matches={game.matches}
+                  t={t}
+                  renderMatch={(m) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      canEdit={canEdit}
+                      onSetWinner={(side) => setMatchWinner(m.id, side)}
+                      onDelete={() => {}}
+                      showDelete={false}
+                      t={t}
+                    />
+                  )}
+                />
+              </>
+            ) : (
+              <>
+                <PlayerStandings standings={game.standings} t={t} />
+                <div style={{ marginTop: 20 }}>
+                  {game.matches.map((m) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      canEdit={canEdit}
+                      onSetWinner={(side) => setMatchWinner(m.id, side)}
+                      onDelete={() => {}}
+                      showDelete={false}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </>
       ) : (
         <div className="section-gap">
           {canEdit && (
@@ -472,6 +623,80 @@ export default function GameDetail() {
           onClose={() => setResultMatch(null)}
         />
       )}
+
+      {showAddPlayer && (
+        <AddPlayerModal
+          allUsers={allUsers}
+          poolIds={new Set((game.players || []).map((p) => p.id))}
+          onAdd={addPlayer}
+          onClose={() => setShowAddPlayer(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddPlayerModal({ allUsers, poolIds, onAdd, onClose }) {
+  const { t } = useLanguage();
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const candidates = allUsers.filter((u) => !poolIds.has(u.id) && (!q || u.name.toLowerCase().includes(q)));
+  return (
+    <Modal title={t("gameDetail.addPlayer")} onClose={onClose}>
+      <input
+        type="text"
+        placeholder={t("teams.searchPlaceholder")}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        style={{
+          width: "100%",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          padding: "8px 12px",
+          marginBottom: 10,
+        }}
+      />
+      {candidates.length === 0 ? (
+        <p className="empty-note">{t("teams.noMembers")}</p>
+      ) : (
+        candidates.map((u) => (
+          <div className="member-pick-row" key={u.id}>
+            <span className="member-pick-name">{u.name}</span>
+            <button className="btn btn-sm btn-primary" onClick={() => onAdd(u.id)}>
+              {t("gameDetail.addPlayer")}
+            </button>
+          </div>
+        ))
+      )}
+    </Modal>
+  );
+}
+
+function PlayerStandings({ standings, t }) {
+  return (
+    <div className="standings-table-wrap">
+      <table className="standings-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th className="st-team">{t("gameDetail.colPlayer")}</th>
+            <th>{t("gameDetail.colPlayed")}</th>
+            <th>{t("gameDetail.colWin")}</th>
+            <th>{t("gameDetail.colLoss")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.map((s, i) => (
+            <tr key={s.id}>
+              <td>{i + 1}</td>
+              <td className="st-team">{s.name}</td>
+              <td>{s.played}</td>
+              <td>{s.wins}</td>
+              <td>{s.losses}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

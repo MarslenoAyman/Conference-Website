@@ -75,6 +75,7 @@ export default function Games() {
                     />
                     <select value={editDraft.type} onChange={(e) => setEditDraft({ ...editDraft, type: e.target.value })}>
                       <option value="roster">{t("games.typeRoster")}</option>
+                      <option value="players">{t("games.typePlayers")}</option>
                       <option value="duel">{t("games.typeDuel")}</option>
                       <option value="matchup">{t("games.typeMatchup")}</option>
                     </select>

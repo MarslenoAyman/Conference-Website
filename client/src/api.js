@@ -53,6 +53,10 @@ export const api = {
     request(`/games/${gameId}/teams/${teamId}`, { method: "DELETE", token }),
   generateFixtures: (token, gameId, format) =>
     request(`/games/${gameId}/generate`, { method: "POST", body: { format }, token }),
+  addGamePlayer: (token, gameId, userId) =>
+    request(`/games/${gameId}/players`, { method: "POST", body: { userId }, token }),
+  removeGamePlayer: (token, gameId, userId) =>
+    request(`/games/${gameId}/players/${userId}`, { method: "DELETE", token }),
   addToRoster: (token, gameId, teamId, userId) =>
     request(`/games/${gameId}/roster`, { method: "POST", body: { teamId, userId }, token }),
   removeFromRoster: (token, gameId, userId) =>

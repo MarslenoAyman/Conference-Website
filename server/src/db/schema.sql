@@ -119,6 +119,19 @@ ALTER TABLE matches ADD COLUMN IF NOT EXISTS yellow_a INTEGER NOT NULL DEFAULT 0
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS red_b INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS yellow_b INTEGER NOT NULL DEFAULT 0;
 
+-- Individual-player games (Chess): the two competing players for a match
+-- (parallel to team_a_id/team_b_id; nullable so cup brackets can hold TBD slots).
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS player_a_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS player_b_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+
+-- The pool of individual players ("seats") added to a player-type game.
+CREATE TABLE IF NOT EXISTS game_players (
+  id TEXT PRIMARY KEY,
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (game_id, user_id)
+);
+
 -- Live goal events for the current competition (cleared with their match on regenerate).
 CREATE TABLE IF NOT EXISTS match_goals (
   id TEXT PRIMARY KEY,
