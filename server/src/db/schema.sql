@@ -94,6 +94,27 @@ CREATE TABLE IF NOT EXISTS game_cards (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Royal Rumble: which global teams are in the ring, and their elimination state.
+CREATE TABLE IF NOT EXISTS game_rumble_teams (
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  eliminated BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (game_id, team_id)
+);
+
+-- Royal Rumble tasks: title + instructions + points reward + optional timer.
+CREATE TABLE IF NOT EXISTS game_tasks (
+  id TEXT PRIMARY KEY,
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  instructions TEXT NOT NULL DEFAULT '',
+  points INTEGER NOT NULL DEFAULT 0,
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  launched_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS game_rosters (
   game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,

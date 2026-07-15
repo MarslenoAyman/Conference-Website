@@ -624,6 +624,96 @@ button {
 .card-art-swatch .card-face {
   filter: none;
 }
+.rumble-ring {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+.rumble-team {
+  display: flex;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.rumble-team.eliminated {
+  opacity: 0.6;
+}
+.rumble-team-bar {
+  width: 8px;
+  flex-shrink: 0;
+}
+.rumble-team-body {
+  padding: 12px 14px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rumble-team-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.rumble-team.eliminated .rumble-team-name {
+  text-decoration: line-through;
+}
+.rumble-team-name {
+  font-weight: 700;
+}
+.rumble-team-points {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.rumble-add-select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+.rumble-task {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--gold);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.rumble-task.task-timeup {
+  border-inline-start-color: var(--brick);
+  background: color-mix(in srgb, var(--brick) 8%, var(--card));
+}
+.rumble-task-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.rumble-task-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.rumble-task-points {
+  color: var(--olive-dark);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rumble-task-instr {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+.rumble-task-timer {
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--maroon);
+}
 .survival-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { randomUUID } from "crypto";
 import { pool } from "../db/pool.js";
 import { authenticate, requireRole } from "../auth.js";
+import { notify } from "./notifications.js";
 
 const router = Router();
 router.use(authenticate);
@@ -469,6 +470,32 @@ async function playerPool(gameId) {
   return rows;
 }
 
+// Royal Rumble ring: global teams in the ring, with points + elimination.
+async function rumbleRing(gameId) {
+  const { rows } = await pool.query(
+    `SELECT t.id, t.name, t.color, t.points, grt.eliminated
+     FROM game_rumble_teams grt JOIN teams t ON t.id = grt.team_id
+     WHERE grt.game_id = $1 ORDER BY grt.eliminated, grt.created_at`,
+    [gameId]
+  );
+  return rows.map((r) => ({ id: r.id, name: r.name, color: r.color, points: r.points, eliminated: r.eliminated }));
+}
+
+async function rumbleTasks(gameId) {
+  const { rows } = await pool.query(
+    "SELECT id, title, instructions, points, duration_seconds, launched_at FROM game_tasks WHERE game_id = $1 ORDER BY created_at",
+    [gameId]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    instructions: r.instructions,
+    points: r.points,
+    durationSeconds: r.duration_seconds,
+    launchedAt: r.launched_at,
+  }));
+}
+
 // Survival board (Squid Game): picked players with their elimination state.
 async function survivalPlayers(gameId) {
   const { rows } = await pool.query(
@@ -625,6 +652,13 @@ router.get("/:id", async (req, res, next) => {
       game.players = players;
       game.playerCount = players.length;
       game.survivorCount = players.filter((p) => !p.eliminated).length;
+      return res.json({ game });
+    }
+
+    if (game.type === "rumble") {
+      game.ring = await rumbleRing(game.id);
+      game.tasks = await rumbleTasks(game.id);
+      game.survivorCount = game.ring.filter((tm) => !tm.eliminated).length;
       return res.json({ game });
     }
 
@@ -940,6 +974,126 @@ router.post("/:id/survivors/reset", requireRole("full"), async (req, res, next) 
   try {
     await pool.query("UPDATE game_players SET eliminated = false WHERE game_id = $1", [req.params.id]);
     res.json({ players: await survivalPlayers(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Royal Rumble: the ring (global teams) ----
+router.post("/:id/ring", requireRole("full"), async (req, res, next) => {
+  try {
+    const { teamId } = req.body || {};
+    if (!teamId) return res.status(400).json({ error: "A team is required." });
+    const { rows: teamRows } = await pool.query("SELECT id FROM teams WHERE id = $1", [teamId]);
+    if (!teamRows[0]) return res.status(404).json({ error: "Team not found." });
+    await pool.query(
+      "INSERT INTO game_rumble_teams (game_id, team_id) VALUES ($1, $2) ON CONFLICT (game_id, team_id) DO NOTHING",
+      [req.params.id, teamId]
+    );
+    res.status(201).json({ ring: await rumbleRing(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/:id/ring/:teamId", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM game_rumble_teams WHERE game_id = $1 AND team_id = $2", [
+      req.params.id,
+      req.params.teamId,
+    ]);
+    res.json({ ring: await rumbleRing(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/:id/ring/:teamId", requireRole("full"), async (req, res, next) => {
+  try {
+    const eliminated = !!req.body?.eliminated;
+    await pool.query("UPDATE game_rumble_teams SET eliminated = $1 WHERE game_id = $2 AND team_id = $3", [
+      eliminated,
+      req.params.id,
+      req.params.teamId,
+    ]);
+    res.json({ ring: await rumbleRing(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/ring/reset", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("UPDATE game_rumble_teams SET eliminated = false WHERE game_id = $1", [req.params.id]);
+    res.json({ ring: await rumbleRing(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Royal Rumble: game tasks ----
+router.post("/:id/tasks", requireRole("full"), async (req, res, next) => {
+  try {
+    const { title, instructions, points, durationSeconds } = req.body || {};
+    if (!title || !title.trim()) return res.status(400).json({ error: "A task title is required." });
+    await pool.query(
+      "INSERT INTO game_tasks (id, game_id, title, instructions, points, duration_seconds) VALUES ($1, $2, $3, $4, $5, $6)",
+      [
+        randomUUID(),
+        req.params.id,
+        title.trim(),
+        (instructions || "").trim(),
+        Math.max(0, Number(points) || 0),
+        Math.max(0, Number(durationSeconds) || 0),
+      ]
+    );
+    res.status(201).json({ tasks: await rumbleTasks(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/:id/tasks/:taskId", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM game_tasks WHERE game_id = $1 AND id = $2", [req.params.id, req.params.taskId]);
+    res.json({ tasks: await rumbleTasks(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/tasks/:taskId/launch", requireRole("full"), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "UPDATE game_tasks SET launched_at = now() WHERE game_id = $1 AND id = $2 RETURNING title",
+      [req.params.id, req.params.taskId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Task not found." });
+    const { rows: g } = await pool.query("SELECT name FROM games WHERE id = $1", [req.params.id]);
+    await notify(`${g[0]?.name || "Royal Rumble"}: ${rows[0].title} — started!`, "warning");
+    res.json({ tasks: await rumbleTasks(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Award a task's points to a ring team (adds to that team's global points).
+router.post("/:id/tasks/:taskId/award", requireRole("full"), async (req, res, next) => {
+  try {
+    const { teamId } = req.body || {};
+    if (!teamId) return res.status(400).json({ error: "A team is required." });
+    const { rows: taskRows } = await pool.query("SELECT title, points FROM game_tasks WHERE game_id = $1 AND id = $2", [
+      req.params.id,
+      req.params.taskId,
+    ]);
+    if (!taskRows[0]) return res.status(404).json({ error: "Task not found." });
+    const { rows: teamRows } = await pool.query(
+      "UPDATE teams SET points = points + $1 WHERE id = $2 RETURNING name",
+      [taskRows[0].points, teamId]
+    );
+    if (!teamRows[0]) return res.status(404).json({ error: "Team not found." });
+    await notify(`${teamRows[0].name} +${taskRows[0].points} — ${taskRows[0].title}`, "info");
+    res.json({ ring: await rumbleRing(req.params.id) });
   } catch (err) {
     next(err);
   }

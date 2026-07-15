@@ -69,6 +69,17 @@ export const api = {
   setSurvivor: (token, gameId, userId, eliminated) =>
     request(`/games/${gameId}/survivors/${userId}`, { method: "PUT", body: { eliminated }, token }),
   resetSurvivors: (token, gameId) => request(`/games/${gameId}/survivors/reset`, { method: "POST", token }),
+  addRingTeam: (token, gameId, teamId) => request(`/games/${gameId}/ring`, { method: "POST", body: { teamId }, token }),
+  removeRingTeam: (token, gameId, teamId) => request(`/games/${gameId}/ring/${teamId}`, { method: "DELETE", token }),
+  setRingTeam: (token, gameId, teamId, eliminated) =>
+    request(`/games/${gameId}/ring/${teamId}`, { method: "PUT", body: { eliminated }, token }),
+  resetRing: (token, gameId) => request(`/games/${gameId}/ring/reset`, { method: "POST", token }),
+  addRumbleTask: (token, gameId, task) => request(`/games/${gameId}/tasks`, { method: "POST", body: task, token }),
+  deleteRumbleTask: (token, gameId, taskId) => request(`/games/${gameId}/tasks/${taskId}`, { method: "DELETE", token }),
+  launchRumbleTask: (token, gameId, taskId) =>
+    request(`/games/${gameId}/tasks/${taskId}/launch`, { method: "POST", token }),
+  awardRumbleTask: (token, gameId, taskId, teamId) =>
+    request(`/games/${gameId}/tasks/${taskId}/award`, { method: "POST", body: { teamId }, token }),
   addToRoster: (token, gameId, teamId, userId) =>
     request(`/games/${gameId}/roster`, { method: "POST", body: { teamId, userId }, token }),
   removeFromRoster: (token, gameId, userId) =>

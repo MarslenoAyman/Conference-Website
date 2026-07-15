@@ -98,6 +98,11 @@ export default function GameDetail() {
     }
   }
 
+  async function reloadGame() {
+    const { game: fresh } = await api.getGame(token, id);
+    setGame(fresh);
+  }
+
   async function addSurvivor(userId) {
     try {
       await api.addGamePlayer(token, id, userId);
@@ -387,6 +392,8 @@ export default function GameDetail() {
           onReset={resetSurvivors}
           t={t}
         />
+      ) : game.type === "rumble" ? (
+        <RumbleView game={game} canEdit={canEdit} token={token} reload={reloadGame} onError={setError} t={t} />
       ) : game.type === "station" ? (
         <StationView
           game={game}
@@ -801,6 +808,253 @@ export default function GameDetail() {
         />
       )}
     </div>
+  );
+}
+
+function rumbleFmt(totalSec) {
+  const s = Math.max(0, Math.floor(totalSec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+}
+
+function RumbleView({ game, canEdit, token, reload, onError, t }) {
+  const [allTeams, setAllTeams] = useState([]);
+  const [now, setNow] = useState(Date.now());
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [draft, setDraft] = useState({ title: "", instructions: "", points: "", hours: "", minutes: "" });
+  const [awardTask, setAwardTask] = useState(null);
+  const [confirm, setConfirm] = useState(null); // {kind, id?}
+
+  const ring = game.ring || [];
+  const tasks = game.tasks || [];
+  const inRingIds = new Set(ring.map((r) => r.id));
+  const availableTeams = allTeams.filter((tm) => !inRingIds.has(tm.id));
+  const activeTeams = ring.filter((r) => !r.eliminated);
+
+  useEffect(() => {
+    if (canEdit) api.getTeams(token).then((d) => setAllTeams(d.teams || [])).catch(() => {});
+  }, [canEdit, token]);
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  async function run(fn) {
+    try {
+      await fn();
+      await reload();
+    } catch (err) {
+      onError(err.message);
+    }
+  }
+
+  async function submitTask(e) {
+    e.preventDefault();
+    if (!draft.title.trim()) return;
+    const durationSeconds = (Number(draft.hours) || 0) * 3600 + (Number(draft.minutes) || 0) * 60;
+    await run(() =>
+      api.addRumbleTask(token, game.id, {
+        title: draft.title.trim(),
+        instructions: draft.instructions.trim(),
+        points: Number(draft.points) || 0,
+        durationSeconds,
+      })
+    );
+    setDraft({ title: "", instructions: "", points: "", hours: "", minutes: "" });
+    setShowAddTask(false);
+  }
+
+  return (
+    <>
+      <div className="competition-head">
+        <h2 className="competition-title">🤼 {t("gameDetail.theRing")}</h2>
+        <div className="competition-stats">
+          <span>
+            {t("gameDetail.stillIn")}: <strong>{activeTeams.length}</strong>
+          </span>
+        </div>
+      </div>
+
+      {canEdit && (
+        <div className="competition-controls">
+          {availableTeams.length > 0 && (
+            <select
+              className="rumble-add-select"
+              value=""
+              onChange={(e) => e.target.value && run(() => api.addRingTeam(token, game.id, e.target.value))}
+            >
+              <option value="">+ {t("gameDetail.addTeamToRing")}</option>
+              {availableTeams.map((tm) => (
+                <option key={tm.id} value={tm.id}>
+                  {tm.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {ring.some((r) => r.eliminated) && (
+            <button className="btn btn-sm btn-primary" onClick={() => setConfirm({ kind: "resetRing" })}>
+              {t("gameDetail.resetRing")}
+            </button>
+          )}
+        </div>
+      )}
+
+      {ring.length === 0 ? (
+        <p className="empty-note">{t("gameDetail.noTeamsInRing")}</p>
+      ) : (
+        <div className="rumble-ring">
+          {ring.map((tm) => (
+            <div className={"rumble-team" + (tm.eliminated ? " eliminated" : "")} key={tm.id}>
+              <div className="rumble-team-bar" style={{ background: tm.color }} />
+              <div className="rumble-team-body">
+                <div className="rumble-team-head">
+                  <span className="rumble-team-name">{tm.name}</span>
+                  <span className="rumble-team-points">{tm.points} {t("teams.points")}</span>
+                </div>
+                {tm.eliminated && <span className="survival-badge out">{t("gameDetail.out")}</span>}
+                {canEdit && (
+                  <div className="survival-actions">
+                    <button className="btn btn-sm" onClick={() => run(() => api.setRingTeam(token, game.id, tm.id, !tm.eliminated))}>
+                      {tm.eliminated ? t("gameDetail.revive") : t("gameDetail.eliminate")}
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => setConfirm({ kind: "removeTeam", id: tm.id })}>
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="section-gap">
+        <div className="competition-head">
+          <h2 className="competition-title">{t("gameDetail.rumbleTasks")}</h2>
+        </div>
+        {canEdit &&
+          (showAddTask ? (
+            <form className="add-box card" onSubmit={submitTask}>
+              <div className="field">
+                <label>{t("gameDetail.taskTitle")}</label>
+                <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+              </div>
+              <div className="field">
+                <label>{t("gameDetail.taskInstructions")}</label>
+                <textarea rows={2} value={draft.instructions} onChange={(e) => setDraft({ ...draft, instructions: e.target.value })} />
+              </div>
+              <div className="add-game-grid">
+                <div className="field">
+                  <label>{t("gameDetail.taskPoints")}</label>
+                  <input inputMode="numeric" value={draft.points} onChange={(e) => setDraft({ ...draft, points: e.target.value.replace(/[^0-9]/g, "") })} />
+                </div>
+                <div className="field">
+                  <label>{t("tasks.hoursPlaceholder")} / {t("tasks.minutesPlaceholder")}</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input inputMode="numeric" placeholder="0" value={draft.hours} onChange={(e) => setDraft({ ...draft, hours: e.target.value.replace(/[^0-9]/g, "") })} />
+                    <input inputMode="numeric" placeholder="0" value={draft.minutes} onChange={(e) => setDraft({ ...draft, minutes: e.target.value.replace(/[^0-9]/g, "") })} />
+                  </div>
+                </div>
+              </div>
+              <div className="card-actions">
+                <button className="btn btn-primary btn-sm" type="submit">{t("common.save")}</button>
+                <button className="btn btn-sm" type="button" onClick={() => setShowAddTask(false)}>{t("common.cancel")}</button>
+              </div>
+            </form>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setShowAddTask(true)}>+ {t("gameDetail.addTask")}</button>
+          ))}
+
+        {tasks.length === 0 ? (
+          <p className="empty-note" style={{ marginTop: 16 }}>{t("gameDetail.noTasksYet")}</p>
+        ) : (
+          <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+            {tasks.map((task) => {
+              const launched = !!task.launchedAt;
+              const remaining = launched
+                ? task.durationSeconds - (now - new Date(task.launchedAt).getTime()) / 1000
+                : task.durationSeconds;
+              const timeUp = launched && remaining <= 0;
+              return (
+                <div className={"rumble-task" + (timeUp ? " task-timeup" : "")} key={task.id}>
+                  <div className="rumble-task-head">
+                    <span className="rumble-task-title">{task.title}</span>
+                    <span className="rumble-task-points">+{task.points} {t("teams.points")}</span>
+                  </div>
+                  {task.instructions && <p className="rumble-task-instr">{task.instructions}</p>}
+                  {task.durationSeconds > 0 && (
+                    <div className="rumble-task-timer">
+                      ⏱ {timeUp ? t("tasks.timeUp") : rumbleFmt(remaining)}
+                    </div>
+                  )}
+                  {canEdit && (
+                    <div className="card-actions">
+                      {!launched && task.durationSeconds > 0 && (
+                        <button className="btn btn-sm btn-primary" onClick={() => run(() => api.launchRumbleTask(token, game.id, task.id))}>
+                          {t("tasks.launch")}
+                        </button>
+                      )}
+                      {activeTeams.length > 0 && (
+                        <button className="btn btn-sm" onClick={() => setAwardTask(task)}>
+                          {t("gameDetail.award")}
+                        </button>
+                      )}
+                      <button className="btn btn-sm btn-danger" onClick={() => setConfirm({ kind: "removeTask", id: task.id })}>
+                        {t("common.delete")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {awardTask && (
+        <Modal title={`${t("gameDetail.award")}: ${awardTask.title}`} onClose={() => setAwardTask(null)}>
+          <p className="empty-note" style={{ marginTop: 0 }}>
+            +{awardTask.points} {t("teams.points")}
+          </p>
+          {activeTeams.map((tm) => (
+            <div className="member-pick-row" key={tm.id}>
+              <span className="member-pick-name">{tm.name}</span>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() =>
+                  run(() => api.awardRumbleTask(token, game.id, awardTask.id, tm.id)).then(() => setAwardTask(null))
+                }
+              >
+                {t("gameDetail.award")}
+              </button>
+            </div>
+          ))}
+        </Modal>
+      )}
+
+      {confirm && (
+        <ConfirmModal
+          message={
+            confirm.kind === "resetRing"
+              ? t("gameDetail.resetRingConfirm")
+              : t("common.confirmDeleteGeneric")
+          }
+          danger={confirm.kind !== "resetRing"}
+          confirmLabel={confirm.kind === "resetRing" ? t("gameDetail.resetRing") : t("common.delete")}
+          onConfirm={() => {
+            if (confirm.kind === "resetRing") run(() => api.resetRing(token, game.id));
+            else if (confirm.kind === "removeTeam") run(() => api.removeRingTeam(token, game.id, confirm.id));
+            else if (confirm.kind === "removeTask") run(() => api.deleteRumbleTask(token, game.id, confirm.id));
+            setConfirm(null);
+          }}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+    </>
   );
 }
 
