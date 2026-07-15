@@ -170,6 +170,7 @@ export const translations = {
     gameDetail: {
       backToGames: "→ العودة إلى الألعاب",
       notFound: "لم يتم العثور على اللعبة.",
+      notParticipant: "أنت لست مشتركًا في هذه اللعبة، لذلك تفاصيلها غير متاحة لك.",
       noTeamsYet: "لا توجد فرق بعد.",
       roster: "التشكيلة",
       noPlayersYet: "لا يوجد لاعبون بعد.",
@@ -483,6 +484,7 @@ export const translations = {
     gameDetail: {
       backToGames: "→ Back to Games",
       notFound: "Game not found.",
+      notParticipant: "You're not part of this game, so its details aren't available to you.",
       noTeamsYet: "No teams yet.",
       roster: "Roster",
       noPlayersYet: "No players yet.",

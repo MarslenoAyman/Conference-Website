@@ -558,6 +558,21 @@ button {
   width: 28px;
   height: 28px;
 }
+.not-participant-card {
+  margin-top: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: var(--space-lg);
+  color: var(--ink-soft);
+}
+.not-participant-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.not-participant-card p {
+  margin: 0;
+}
 .format-toggle {
   display: inline-flex;
   border: 1px solid var(--border);

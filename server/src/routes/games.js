@@ -18,6 +18,7 @@ function toGame(row) {
     teamSize: row.team_size,
     manager: row.manager || "",
     fixturesReady: row.fixtures_ready || false,
+    allServedView: row.all_served_view || false,
   };
 }
 
@@ -534,17 +535,35 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// Is this served member signed into the game (on a roster or in the player pool)?
+async function isServedParticipant(gameId, userId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM game_rosters WHERE game_id = $1 AND user_id = $2
+     UNION ALL
+     SELECT 1 FROM game_players WHERE game_id = $1 AND user_id = $2
+     LIMIT 1`,
+    [gameId, userId]
+  );
+  return rows.length > 0;
+}
+
 router.get("/:id", async (req, res, next) => {
   try {
     const { rows } = await pool.query("SELECT * FROM games WHERE id = $1", [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: "Game not found." });
     const game = toGame(rows[0]);
+
+    // Served members see full game details only for games they're part of.
+    // (allServedView games — e.g. the Card Game — are open to every served member.)
+    if (req.user.role === "none") {
+      const participant = game.allServedView || (await isServedParticipant(game.id, req.user.id));
+      game.participant = participant;
+      if (!participant) return res.json({ game });
+    }
+
     if (game.type === "roster") {
       const rosters = await rosterView(game.id);
-      game.rosters =
-        req.user.role === "none"
-          ? rosters.filter((r) => r.players.some((p) => p.id === req.user.id))
-          : rosters;
+      game.rosters = rosters;
       game.teamCount = rosters.length;
       if (game.fixturesReady) {
         const { matches, standings } = await competitionView(game.id, game.format);

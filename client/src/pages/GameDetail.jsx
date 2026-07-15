@@ -208,6 +208,42 @@ export default function GameDetail() {
     );
   }
 
+  // Served members who aren't part of this game see the header only, not the
+  // rosters/players/competition. The server omits those fields for them.
+  if (user.role === "none" && game.participant === false) {
+    return (
+      <div className="page">
+        <Link to="/games" className="preview-more-link" style={{ display: "inline-block", marginBottom: 16 }}>
+          {t("gameDetail.backToGames")}
+        </Link>
+        <div className="game-detail-header">
+          <div className="game-icon" style={{ color: GAME_ICON_COLORS[game.icon] || GAME_ICON_COLORS.ball }}>
+            {GAME_ICONS[game.icon] || GAME_ICONS.ball}
+          </div>
+          <div>
+            <h1 className="page-title" style={{ fontSize: "2rem", marginBottom: 4 }}>
+              {game.name}
+            </h1>
+            {game.description && (
+              <p className="page-subtitle" style={{ margin: 0 }}>
+                {game.description}
+              </p>
+            )}
+            {game.manager && (
+              <p className="game-manager" style={{ marginTop: 6 }}>
+                {t("games.responsible")}: <strong>{game.manager}</strong>
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="card not-participant-card">
+          <span className="not-participant-icon">🔒</span>
+          <p>{t("gameDetail.notParticipant")}</p>
+        </div>
+      </div>
+    );
+  }
+
   const manageTeam = manageTeamId ? game.rosters.find((r) => r.teamId === manageTeamId) : null;
 
   let cupChampion = null;
