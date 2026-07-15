@@ -78,4 +78,21 @@ router.post("/:userId", requireRole("full"), async (req, res, next) => {
   }
 });
 
+// Full-access servants can permanently delete a served (self-signed-up) account.
+// Restricted to role='none' so servant accounts can never be removed here.
+// FK cascades clean up the user's bonus log, rosters, goals, and match entries.
+router.delete("/:userId", requireRole("full"), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query("SELECT id, role FROM users WHERE id = $1", [req.params.userId]);
+    if (!rows[0]) return res.status(404).json({ error: "Member not found." });
+    if (rows[0].role !== "none") {
+      return res.status(403).json({ error: "Only served accounts can be deleted here." });
+    }
+    await pool.query("DELETE FROM users WHERE id = $1", [req.params.userId]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

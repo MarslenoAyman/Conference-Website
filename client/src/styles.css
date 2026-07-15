@@ -1451,6 +1451,24 @@ button {
   gap: 10px;
   margin-bottom: 4px;
 }
+.bonus-delete-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--brick);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.15s;
+}
+.bonus-delete-btn:hover {
+  transform: scale(1.12);
+  background: color-mix(in srgb, var(--brick) 12%, var(--card));
+}
 .bonus-hint {
   color: var(--ink-soft);
   font-size: 0.844rem;

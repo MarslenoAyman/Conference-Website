@@ -237,6 +237,8 @@ export const translations = {
       pointsPlaceholder: "النقاط",
       confirm: "تأكيد",
       byActor: "بواسطة",
+      deleteMember: "حذف الحساب",
+      deleteConfirm: "هل تريد حذف هذا المخدوم وكل بياناته نهائيًا من قاعدة البيانات؟ لا يمكن التراجع عن هذا.",
     },
     settings: {
       title: "الإعدادات",
@@ -502,6 +504,8 @@ export const translations = {
       pointsPlaceholder: "Points",
       confirm: "Confirm",
       byActor: "by",
+      deleteMember: "Delete account",
+      deleteConfirm: "Delete this served member and all their data permanently from the database? This cannot be undone.",
     },
     settings: {
       title: "Settings",
