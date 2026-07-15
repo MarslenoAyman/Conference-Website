@@ -363,7 +363,7 @@ export default function GameDetail() {
         </div>
         <div>
           <h1 className="page-title" style={{ fontSize: "2rem", marginBottom: 4 }}>
-            {game.name}
+            {gameName(game, t)}
           </h1>
           {game.description && (
             <p className="page-subtitle" style={{ margin: 0 }}>

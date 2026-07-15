@@ -122,6 +122,49 @@ export async function migrate() {
   const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
   await pool.query(schema);
   await seedIfEmpty();
+  await ensureGames();
+}
+
+// The full games catalogue is fixed and not user-editable, so we make sure every
+// defined game exists on every startup — new games are added to any database
+// (including already-seeded local/production ones) without a reset, and existing
+// games are kept in sync (type/system, translation key) without clobbering a
+// manually-set responsible name. Games are matched by their unique icon key.
+async function ensureGames() {
+  for (const [name, icon, type, format, teamSize, manager, singlesOnly, nameKey] of GAMES) {
+    const allServed = type === "showcase" || type === "survival" || type === "rumble";
+    const { rows } = await pool.query("SELECT id FROM games WHERE icon = $1 LIMIT 1", [icon]);
+    let gameId;
+    if (rows[0]) {
+      gameId = rows[0].id;
+      await pool.query(
+        `UPDATE games SET type = $1, format = $2, team_size = $3, singles_only = $4, all_served_view = $5,
+         name_key = $6, manager = COALESCE(NULLIF(manager, ''), $7) WHERE id = $8`,
+        [type, format, teamSize, singlesOnly, allServed, nameKey, manager, gameId]
+      );
+    } else {
+      gameId = randomUUID();
+      await pool.query(
+        `INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only, all_served_view, name_key)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [gameId, name, icon, type, format, teamSize, manager, singlesOnly, allServed, nameKey]
+      );
+    }
+    // Seed showcase cards once (Card Game: Screw/Cochina, Play Station: FIFA/PES).
+    const cards = SHOWCASE_CARDS[icon];
+    if (cards) {
+      const { rows: have } = await pool.query("SELECT COUNT(*)::int AS n FROM game_cards WHERE game_id = $1", [gameId]);
+      if (have[0].n === 0) {
+        let sort = 0;
+        for (const [cardTitle, cardSub, art] of cards) {
+          await pool.query(
+            "INSERT INTO game_cards (id, game_id, title, subtitle, art, sort) VALUES ($1, $2, $3, $4, $5, $6)",
+            [randomUUID(), gameId, cardTitle, cardSub, art, sort++]
+          );
+        }
+      }
+    }
+  }
 }
 
 async function seedIfEmpty() {
@@ -177,33 +220,5 @@ async function seedIfEmpty() {
       description,
     ]);
   }
-
-  for (const [name, icon, type, format, teamSize, manager, singlesOnly, nameKey] of GAMES) {
-    const gameId = randomUUID();
-    await pool.query(
-      "INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only, all_served_view, name_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-      [
-        gameId,
-        name,
-        icon,
-        type,
-        format,
-        teamSize,
-        manager,
-        singlesOnly,
-        type === "showcase" || type === "survival" || type === "rumble",
-        nameKey,
-      ]
-    );
-    const cards = SHOWCASE_CARDS[icon];
-    if (cards) {
-      let sort = 0;
-      for (const [cardTitle, cardSub, art] of cards) {
-        await pool.query(
-          "INSERT INTO game_cards (id, game_id, title, subtitle, art, sort) VALUES ($1, $2, $3, $4, $5, $6)",
-          [randomUUID(), gameId, cardTitle, cardSub, art, sort++]
-        );
-      }
-    }
-  }
+  // Games are created by ensureGames(), which runs on every startup.
 }
