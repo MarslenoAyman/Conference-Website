@@ -63,3 +63,14 @@ export const CARD_ART = {
 };
 
 export const CARD_ART_KEYS = ["screw", "cochina", "fifa", "pes", "card"];
+
+// Render a card's art: a real photo when `art` is an image path/URL
+// (e.g. "/cards/fifa.jpg" or "https://…" or a data: URI), otherwise the
+// palette-matched drawn SVG for the given key.
+export function CardArt({ art, alt }) {
+  const isImage = typeof art === "string" && /^(https?:|data:|\/)/.test(art);
+  if (isImage) {
+    return <img className="card-photo" src={art} alt={alt || ""} loading="lazy" />;
+  }
+  return CARD_ART[art] || CARD_ART.card;
+}

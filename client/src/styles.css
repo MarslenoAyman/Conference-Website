@@ -577,6 +577,13 @@ button {
   width: 120px;
   max-width: 70%;
 }
+.card-photo {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
 .card-face {
   width: 100%;
   height: auto;

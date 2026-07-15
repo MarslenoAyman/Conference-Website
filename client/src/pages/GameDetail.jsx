@@ -5,7 +5,7 @@ import { useLanguage } from "../context/LanguageContext.jsx";
 import { gameName } from "../i18n.js";
 import { api } from "../api.js";
 import { GAME_ICONS, GAME_ICON_COLORS } from "../gameIcons.jsx";
-import { CARD_ART, CARD_ART_KEYS } from "../cardArt.jsx";
+import { CARD_ART, CARD_ART_KEYS, CardArt } from "../cardArt.jsx";
 import Modal from "../components/Modal.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Alert from "../components/Alert.jsx";
@@ -1151,7 +1151,9 @@ function StationView({ cards, canEdit, allUsers, onAddEntry, onRemoveEntry, onGe
         <div className="card-showcase-grid">
           {cards.map((c) => (
             <button className="showcase-card station-card" key={c.id} onClick={() => setOpenId(c.id)}>
-              <div className="showcase-card-art">{CARD_ART[c.art] || CARD_ART.card}</div>
+              <div className="showcase-card-art">
+                <CardArt art={c.art} alt={c.title} />
+              </div>
               <h3 className="showcase-card-title">{c.title}</h3>
               <span className="station-card-meta">
                 {c.fixturesReady
@@ -1444,7 +1446,9 @@ function ShowcaseView({ cards, canEdit, onAdd, onRemove, t }) {
         <div className="card-showcase-grid">
           {cards.map((c) => (
             <div className="showcase-card" key={c.id}>
-              <div className="showcase-card-art">{CARD_ART[c.art] || CARD_ART.card}</div>
+              <div className="showcase-card-art">
+                <CardArt art={c.art} alt={c.title} />
+              </div>
               <h3 className="showcase-card-title">{c.title}</h3>
               {c.subtitle && <p className="showcase-card-sub">{c.subtitle}</p>}
               {canEdit && (
