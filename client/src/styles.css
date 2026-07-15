@@ -624,6 +624,49 @@ button {
 .card-art-swatch .card-face {
   filter: none;
 }
+.entry-mode {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-inline-end: 8px;
+  color: #fff;
+}
+.entry-mode--single {
+  background: var(--olive);
+}
+.entry-mode--multi {
+  background: var(--maroon);
+}
+.entry-picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 24px;
+}
+.entry-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 0.9rem;
+}
+.entry-chip button {
+  border: none;
+  background: color-mix(in srgb, var(--maroon) 15%, transparent);
+  color: var(--maroon);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
 .not-participant-card {
   margin-top: var(--space-lg);
   display: flex;

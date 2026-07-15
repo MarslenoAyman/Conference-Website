@@ -166,6 +166,8 @@ CREATE TABLE IF NOT EXISTS game_pairs (
   player1_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   player2_id TEXT REFERENCES users(id) ON DELETE SET NULL
 );
+-- Ordering for manually-built entries (Play Station); harmless for auto pairs.
+ALTER TABLE game_pairs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 -- Match competitor slots for player games (reference game_pairs; nullable for
 -- cup bracket TBD slots).

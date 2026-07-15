@@ -98,6 +98,37 @@ export default function GameDetail() {
     }
   }
 
+  async function addEntry(playerIds) {
+    try {
+      const { entries } = await api.addGameEntry(token, id, playerIds);
+      setGame((prev) => ({
+        ...prev,
+        entries,
+        entryCount: entries.length,
+        fixturesReady: false,
+        matches: [],
+        standings: prev.format === "league" ? [] : null,
+      }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function removeEntry(pairId) {
+    try {
+      const { entries } = await api.removeGameEntry(token, id, pairId);
+      setGame((prev) => ({
+        ...prev,
+        entries,
+        entryCount: entries.length,
+        fixturesReady: false,
+        matches: [],
+        standings: prev.format === "league" ? [] : null,
+      }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
   async function addCard(card) {
     try {
       const { cards } = await api.addGameCard(token, id, card);
@@ -267,7 +298,7 @@ export default function GameDetail() {
 
   let cupChampion = null;
   if (
-    (game.type === "roster" || game.type === "players") &&
+    (game.type === "roster" || game.type === "players" || game.type === "station") &&
     game.format === "cup" &&
     game.fixturesReady &&
     game.matches?.length
@@ -310,6 +341,20 @@ export default function GameDetail() {
 
       {game.type === "showcase" ? (
         <ShowcaseView cards={game.cards || []} canEdit={canEdit} onAdd={addCard} onRemove={removeCard} t={t} />
+      ) : game.type === "station" ? (
+        <StationView
+          game={game}
+          canEdit={canEdit}
+          allUsers={allUsers}
+          chosenFormat={chosenFormat}
+          setChosenFormat={setChosenFormat}
+          onAddEntry={addEntry}
+          onRemoveEntry={removeEntry}
+          onGenerate={generateFixtures}
+          onSetWinner={setMatchWinner}
+          cupChampion={cupChampion}
+          t={t}
+        />
       ) : game.type === "roster" ? (
         <>
           <div className="grid-teams roster-grid">
@@ -710,6 +755,255 @@ export default function GameDetail() {
         />
       )}
     </div>
+  );
+}
+
+function StationView({
+  game,
+  canEdit,
+  allUsers,
+  chosenFormat,
+  setChosenFormat,
+  onAddEntry,
+  onRemoveEntry,
+  onGenerate,
+  onSetWinner,
+  cupChampion,
+  t,
+}) {
+  const [showAddEntry, setShowAddEntry] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
+  const entries = game.entries || [];
+  const cards = game.cards || [];
+
+  return (
+    <>
+      {cards.length > 0 && (
+        <div className="card-showcase-grid" style={{ marginBottom: "var(--space-lg)" }}>
+          {cards.map((c) => (
+            <div className="showcase-card" key={c.id}>
+              <div className="showcase-card-art">{CARD_ART[c.art] || CARD_ART.card}</div>
+              <h3 className="showcase-card-title">{c.title}</h3>
+              {c.subtitle && <p className="showcase-card-sub">{c.subtitle}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="players-section">
+        <div className="competition-head">
+          <h2 className="competition-title">{t("gameDetail.entries")}</h2>
+          <div className="competition-stats">
+            <span>
+              {t("gameDetail.entriesCount")}: <strong>{entries.length}</strong>
+            </span>
+          </div>
+        </div>
+        <div className="card">
+          {entries.length === 0 ? (
+            <p className="empty-note">{t("gameDetail.noEntriesYet")}</p>
+          ) : (
+            entries.map((e) => (
+              <div className="member-row" key={e.id}>
+                <span>
+                  <span className={"entry-mode entry-mode--" + e.mode}>
+                    {e.mode === "multi" ? t("gameDetail.multi") : t("gameDetail.single")}
+                  </span>
+                  {e.players.map((p) => p.name).join(" & ")}
+                </span>
+                {canEdit && (
+                  <button className="btn btn-sm btn-danger" onClick={() => setConfirmId(e.id)}>
+                    {t("common.delete")}
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+          {canEdit && (
+            <button className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => setShowAddEntry(true)}>
+              + {t("gameDetail.addEntry")}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="section-gap">
+        <div className="competition-head">
+          <h2 className="competition-title">{t("gameDetail.competition")}</h2>
+          <div className="competition-stats">
+            {game.fixturesReady && (
+              <span>
+                {t("gameDetail.system")}:{" "}
+                <strong>{game.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {canEdit && entries.length >= 2 && (
+          <div className="competition-controls">
+            <div className="format-toggle">
+              <button className={chosenFormat === "league" ? "active" : ""} onClick={() => setChosenFormat("league")}>
+                {t("gameDetail.league")}
+              </button>
+              <button className={chosenFormat === "cup" ? "active" : ""} onClick={() => setChosenFormat("cup")}>
+                {t("gameDetail.cup")}
+              </button>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={onGenerate}>
+              {game.fixturesReady
+                ? t("gameDetail.regenerate")
+                : chosenFormat === "cup"
+                ? t("gameDetail.generateCup")
+                : t("gameDetail.generateLeague")}
+            </button>
+          </div>
+        )}
+
+        {entries.length < 2 ? (
+          <p className="empty-note">{t("gameDetail.needTwoEntries")}</p>
+        ) : !game.fixturesReady ? (
+          <p className="empty-note">{t("gameDetail.notGeneratedYet")}</p>
+        ) : game.format === "cup" ? (
+          <>
+            {cupChampion && (
+              <div className="champion-banner">
+                🏆 {t("gameDetail.champion")}: <strong>{cupChampion}</strong>
+              </div>
+            )}
+            <BracketView
+              matches={game.matches}
+              t={t}
+              renderMatch={(m) => (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  canEdit={canEdit}
+                  onSetWinner={(side) => onSetWinner(m.id, side)}
+                  onDelete={() => {}}
+                  showDelete={false}
+                  t={t}
+                />
+              )}
+            />
+          </>
+        ) : (
+          <>
+            <PlayerStandings standings={game.standings} t={t} />
+            <div style={{ marginTop: 20 }}>
+              {game.matches.map((m) => (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  canEdit={canEdit}
+                  onSetWinner={(side) => onSetWinner(m.id, side)}
+                  onDelete={() => {}}
+                  showDelete={false}
+                  t={t}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {showAddEntry && (
+        <AddEntryModal allUsers={allUsers} onAdd={onAddEntry} onClose={() => setShowAddEntry(false)} t={t} />
+      )}
+      {confirmId && (
+        <ConfirmModal
+          message={t("common.confirmDeleteGeneric")}
+          danger
+          confirmLabel={t("common.delete")}
+          onConfirm={() => {
+            onRemoveEntry(confirmId);
+            setConfirmId(null);
+          }}
+          onCancel={() => setConfirmId(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function AddEntryModal({ allUsers, onAdd, onClose, t }) {
+  const [mode, setMode] = useState("single");
+  const [picked, setPicked] = useState([]);
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState("");
+
+  const need = mode === "multi" ? 2 : 1;
+  const q = query.trim().toLowerCase();
+  const candidates = allUsers.filter((u) => !picked.includes(u.id) && (!q || u.name.toLowerCase().includes(q)));
+  const nameById = Object.fromEntries(allUsers.map((u) => [u.id, u.name]));
+
+  function toggleMode(m) {
+    setMode(m);
+    setPicked((prev) => prev.slice(0, m === "multi" ? 2 : 1));
+  }
+  function pick(uid) {
+    setPicked((prev) => (prev.length >= need ? prev : [...prev, uid]));
+  }
+  async function submit() {
+    if (picked.length !== need) {
+      setError(need === 2 ? t("gameDetail.pickTwoPlayers") : t("gameDetail.pickOnePlayer"));
+      return;
+    }
+    await onAdd(picked);
+    onClose();
+  }
+
+  return (
+    <Modal title={t("gameDetail.addEntry")} onClose={onClose}>
+      <Alert message={error} onDismiss={() => setError("")} />
+      <div className="format-toggle" style={{ marginBottom: 14 }}>
+        <button className={mode === "single" ? "active" : ""} onClick={() => toggleMode("single")}>
+          {t("gameDetail.single")}
+        </button>
+        <button className={mode === "multi" ? "active" : ""} onClick={() => toggleMode("multi")}>
+          {t("gameDetail.multi")}
+        </button>
+      </div>
+      <div className="entry-picked">
+        {picked.length === 0 ? (
+          <span className="empty-note">{need === 2 ? t("gameDetail.pickTwoPlayers") : t("gameDetail.pickOnePlayer")}</span>
+        ) : (
+          picked.map((uid) => (
+            <span className="entry-chip" key={uid}>
+              {nameById[uid]}
+              <button onClick={() => setPicked((prev) => prev.filter((x) => x !== uid))}>×</button>
+            </span>
+          ))
+        )}
+      </div>
+      {picked.length < need && (
+        <>
+          <input
+            type="text"
+            placeholder={t("teams.searchPlaceholder")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", margin: "10px 0" }}
+          />
+          {candidates.map((u) => (
+            <div className="member-pick-row" key={u.id}>
+              <span className="member-pick-name">{u.name}</span>
+              <button className="btn btn-sm btn-primary" onClick={() => pick(u.id)}>
+                {t("gameDetail.select")}
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+      <div className="card-actions" style={{ marginTop: 14 }}>
+        <button className="btn btn-primary btn-sm" onClick={submit}>
+          {t("common.save")}
+        </button>
+        <button className="btn btn-sm" onClick={onClose}>
+          {t("common.cancel")}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

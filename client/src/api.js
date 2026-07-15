@@ -63,6 +63,9 @@ export const api = {
     request(`/games/${gameId}/players/${userId}`, { method: "DELETE", token }),
   addGameCard: (token, gameId, card) => request(`/games/${gameId}/cards`, { method: "POST", body: card, token }),
   removeGameCard: (token, gameId, cardId) => request(`/games/${gameId}/cards/${cardId}`, { method: "DELETE", token }),
+  addGameEntry: (token, gameId, playerIds) =>
+    request(`/games/${gameId}/entries`, { method: "POST", body: { playerIds }, token }),
+  removeGameEntry: (token, gameId, pairId) => request(`/games/${gameId}/entries/${pairId}`, { method: "DELETE", token }),
   addToRoster: (token, gameId, teamId, userId) =>
     request(`/games/${gameId}/roster`, { method: "POST", body: { teamId, userId }, token }),
   removeFromRoster: (token, gameId, userId) =>

@@ -31,6 +31,25 @@ async function cardsView(gameId) {
   return rows.map((c) => ({ id: c.id, title: c.title, subtitle: c.subtitle, art: c.art }));
 }
 
+// Play Station entries: each game_pair is one competitor — a single player or a
+// multi (2-player) team, mixed freely in the same competition.
+async function stationEntries(gameId) {
+  const { rows } = await pool.query(
+    `SELECT gp.id, u1.id AS p1_id, u1.name AS p1_name, u2.id AS p2_id, u2.name AS p2_name
+     FROM game_pairs gp
+     JOIN users u1 ON u1.id = gp.player1_id
+     LEFT JOIN users u2 ON u2.id = gp.player2_id
+     WHERE gp.game_id = $1
+     ORDER BY gp.created_at`,
+    [gameId]
+  );
+  return rows.map((r) => {
+    const players = [{ id: r.p1_id, name: r.p1_name }];
+    if (r.p2_id) players.push({ id: r.p2_id, name: r.p2_name });
+    return { id: r.id, mode: r.p2_id ? "multi" : "single", players };
+  });
+}
+
 async function rosterView(gameId) {
   const { rows: teams } = await pool.query("SELECT * FROM game_teams WHERE game_id = $1 ORDER BY name", [gameId]);
   const { rows: rosterRows } = await pool.query(
@@ -487,7 +506,21 @@ async function buildPlayerPairs(gameId, teamSize) {
 async function generatePlayerFixtures(gameId, format, teamSize) {
   await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
   const ids = await buildPlayerPairs(gameId, teamSize);
+  await buildFixturesFromPairs(gameId, format, ids);
+}
 
+// Play Station-style games: entries (game_pairs) are built manually by the
+// manager (each a single player or a multi pair), so generate fixtures over the
+// existing entries without rebuilding them.
+async function generateStationFixtures(gameId, format) {
+  await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
+  const { rows } = await pool.query("SELECT id FROM game_pairs WHERE game_id = $1", [gameId]);
+  await buildFixturesFromPairs(gameId, format, shuffle(rows.map((r) => r.id)));
+}
+
+// Given the competitor pair ids, lay out League (round-robin) or Cup
+// (single-elimination) matches between them.
+async function buildFixturesFromPairs(gameId, format, ids) {
   if (format === "league") {
     let pos = 0;
     for (let i = 0; i < ids.length; i++) {
@@ -550,6 +583,8 @@ async function isServedParticipant(gameId, userId) {
     `SELECT 1 FROM game_rosters WHERE game_id = $1 AND user_id = $2
      UNION ALL
      SELECT 1 FROM game_players WHERE game_id = $1 AND user_id = $2
+     UNION ALL
+     SELECT 1 FROM game_pairs WHERE game_id = $1 AND ($2 IN (player1_id, player2_id))
      LIMIT 1`,
     [gameId, userId]
   );
@@ -572,6 +607,21 @@ router.get("/:id", async (req, res, next) => {
 
     if (game.type === "showcase") {
       game.cards = await cardsView(game.id);
+      return res.json({ game });
+    }
+
+    if (game.type === "station") {
+      game.cards = await cardsView(game.id);
+      game.entries = await stationEntries(game.id);
+      game.entryCount = game.entries.length;
+      if (game.fixturesReady) {
+        const { matches, standings } = await playerCompetitionView(game.id, game.format);
+        game.matches = matches;
+        game.standings = standings;
+      } else {
+        game.matches = [];
+        game.standings = game.format === "league" ? [] : null;
+      }
       return res.json({ game });
     }
 
@@ -815,6 +865,44 @@ router.delete("/:id/cards/:cardId", requireRole("full"), async (req, res, next) 
   }
 });
 
+// Play Station entries: add a single (one player) or multi (two players) entry.
+// Adding/removing an entry clears any generated fixtures.
+router.post("/:id/entries", requireRole("full"), async (req, res, next) => {
+  try {
+    const playerIds = (req.body?.playerIds || []).filter(Boolean);
+    if (playerIds.length < 1 || playerIds.length > 2) {
+      return res.status(400).json({ error: "An entry needs one or two players." });
+    }
+    if (playerIds.length === 2 && playerIds[0] === playerIds[1]) {
+      return res.status(400).json({ error: "A multi entry needs two different players." });
+    }
+    const { rows: users } = await pool.query("SELECT id FROM users WHERE id = ANY($1)", [playerIds]);
+    if (users.length !== playerIds.length) return res.status(404).json({ error: "Member not found." });
+    await pool.query("INSERT INTO game_pairs (id, game_id, player1_id, player2_id) VALUES ($1, $2, $3, $4)", [
+      randomUUID(),
+      req.params.id,
+      playerIds[0],
+      playerIds[1] || null,
+    ]);
+    await pool.query("DELETE FROM matches WHERE game_id = $1", [req.params.id]);
+    await pool.query("UPDATE games SET fixtures_ready = false WHERE id = $1", [req.params.id]);
+    res.status(201).json({ entries: await stationEntries(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/:id/entries/:pairId", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM game_pairs WHERE game_id = $1 AND id = $2", [req.params.id, req.params.pairId]);
+    await pool.query("DELETE FROM matches WHERE game_id = $1", [req.params.id]);
+    await pool.query("UPDATE games SET fixtures_ready = false WHERE id = $1", [req.params.id]);
+    res.json({ entries: await stationEntries(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Auto-build League or Cup fixtures for a roster (team) or player game.
 router.post("/:id/generate", requireRole("full"), async (req, res, next) => {
   try {
@@ -845,6 +933,25 @@ router.post("/:id/generate", requireRole("full"), async (req, res, next) => {
       const game = toGame(rows[0]);
       game.players = await playerPool(game.id);
       game.playerCount = game.players.length;
+      const { matches, standings } = await playerCompetitionView(game.id, game.format);
+      game.matches = matches;
+      game.standings = standings;
+      return res.json({ game });
+    }
+
+    if (type === "station") {
+      const { rows: cnt } = await pool.query("SELECT COUNT(*)::int AS n FROM game_pairs WHERE game_id = $1", [
+        req.params.id,
+      ]);
+      if (cnt[0].n < 2) return res.status(400).json({ error: "Add at least two entries first." });
+      await generateStationFixtures(req.params.id, format);
+      const { rows } = await pool.query(
+        "UPDATE games SET format = $1, fixtures_ready = true WHERE id = $2 RETURNING *",
+        [format, req.params.id]
+      );
+      const game = toGame(rows[0]);
+      game.cards = await cardsView(game.id);
+      game.entries = await stationEntries(game.id);
       const { matches, standings } = await playerCompetitionView(game.id, game.format);
       game.matches = matches;
       game.standings = standings;

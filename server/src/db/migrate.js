@@ -94,6 +94,7 @@ const GAMES = [
   ["الدومينو", "domino", "players", "league", 1, "Fr Philopater Girgis & Mr Adry", false],
   ["الطاولة", "tawla", "players", "league", 1, "Fr Philopater Girgis", true],
   ["الكوتشينة", "cards", "showcase", "league", 1, "Mr Andrew Amir", false],
+  ["بلايستيشن", "gamepad", "station", "league", 1, "Mr Andrew Samir", false],
 ];
 
 // Showcase cards seeded for a game (matched to the game by its icon key).
@@ -101,6 +102,10 @@ const SHOWCASE_CARDS = {
   cards: [
     ["اسكرو", "Screw", "screw"],
     ["كوتشينة", "Cochina", "cochina"],
+  ],
+  gamepad: [
+    ["FIFA", "", "fifa"],
+    ["PES", "", "pes"],
   ],
 };
 
