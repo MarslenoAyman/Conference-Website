@@ -823,22 +823,18 @@ function rumbleFmt(totalSec) {
 }
 
 function RumbleView({ game, canEdit, token, reload, onError, t }) {
-  const [allTeams, setAllTeams] = useState([]);
   const [now, setNow] = useState(Date.now());
   const [showAddTask, setShowAddTask] = useState(false);
   const [draft, setDraft] = useState({ title: "", instructions: "", points: "", hours: "", minutes: "" });
   const [awardTask, setAwardTask] = useState(null);
   const [confirm, setConfirm] = useState(null); // {kind, id?}
 
-  const ring = game.ring || [];
+  const teams = game.rumbleTeams || [];
   const tasks = game.tasks || [];
-  const inRingIds = new Set(ring.map((r) => r.id));
-  const availableTeams = allTeams.filter((tm) => !inRingIds.has(tm.id));
-  const activeTeams = ring.filter((r) => !r.eliminated);
+  const ringMembers = teams.flatMap((tm) => tm.members.filter((m) => m.inRing));
+  const stillIn = ringMembers.filter((m) => !m.eliminated).length;
+  const anyEliminated = ringMembers.some((m) => m.eliminated);
 
-  useEffect(() => {
-    if (canEdit) api.getTeams(token).then((d) => setAllTeams(d.teams || [])).catch(() => {});
-  }, [canEdit, token]);
   useEffect(() => {
     const iv = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(iv);
@@ -875,58 +871,74 @@ function RumbleView({ game, canEdit, token, reload, onError, t }) {
         <h2 className="competition-title">🤼 {t("gameDetail.theRing")}</h2>
         <div className="competition-stats">
           <span>
-            {t("gameDetail.stillIn")}: <strong>{activeTeams.length}</strong>
+            {t("gameDetail.stillIn")}: <strong>{stillIn}</strong>
           </span>
+          {ringMembers.length > 0 && (
+            <span>
+              {t("gameDetail.inRing")}: <strong>{ringMembers.length}</strong>
+            </span>
+          )}
         </div>
       </div>
 
-      {canEdit && (
+      {canEdit && anyEliminated && (
         <div className="competition-controls">
-          {availableTeams.length > 0 && (
-            <select
-              className="rumble-add-select"
-              value=""
-              onChange={(e) => e.target.value && run(() => api.addRingTeam(token, game.id, e.target.value))}
-            >
-              <option value="">+ {t("gameDetail.addTeamToRing")}</option>
-              {availableTeams.map((tm) => (
-                <option key={tm.id} value={tm.id}>
-                  {tm.name}
-                </option>
-              ))}
-            </select>
-          )}
-          {ring.some((r) => r.eliminated) && (
-            <button className="btn btn-sm btn-primary" onClick={() => setConfirm({ kind: "resetRing" })}>
-              {t("gameDetail.resetRing")}
-            </button>
-          )}
+          <button className="btn btn-sm btn-primary" onClick={() => setConfirm({ kind: "resetRing" })}>
+            {t("gameDetail.resetRing")}
+          </button>
         </div>
       )}
 
-      {ring.length === 0 ? (
-        <p className="empty-note">{t("gameDetail.noTeamsInRing")}</p>
+      {teams.length === 0 ? (
+        <p className="empty-note">{t("gameDetail.noRumbleTeams")}</p>
       ) : (
-        <div className="rumble-ring">
-          {ring.map((tm) => (
-            <div className={"rumble-team" + (tm.eliminated ? " eliminated" : "")} key={tm.id}>
-              <div className="rumble-team-bar" style={{ background: tm.color }} />
-              <div className="rumble-team-body">
-                <div className="rumble-team-head">
-                  <span className="rumble-team-name">{tm.name}</span>
-                  <span className="rumble-team-points">{tm.points} {t("teams.points")}</span>
-                </div>
-                {tm.eliminated && <span className="survival-badge out">{t("gameDetail.out")}</span>}
-                {canEdit && (
-                  <div className="survival-actions">
-                    <button className="btn btn-sm" onClick={() => run(() => api.setRingTeam(token, game.id, tm.id, !tm.eliminated))}>
-                      {tm.eliminated ? t("gameDetail.revive") : t("gameDetail.eliminate")}
-                    </button>
-                    <button className="btn btn-sm btn-danger" onClick={() => setConfirm({ kind: "removeTeam", id: tm.id })}>
-                      {t("common.delete")}
-                    </button>
+        <div className="rumble-teams-grid">
+          {teams.map((tm) => (
+            <div className="rumble-team-col" key={tm.teamId}>
+              <div className="rumble-team-banner" style={{ background: tm.color }}>
+                <span>{tm.teamName}</span>
+                <span className="rumble-team-count">
+                  {tm.members.filter((m) => m.inRing && !m.eliminated).length}/{tm.members.length}
+                </span>
+              </div>
+              <div className="rumble-team-members">
+                {tm.members.map((m) => (
+                  <div
+                    className={"rumble-member" + (m.inRing ? " in-ring" : "") + (m.eliminated ? " eliminated" : "")}
+                    key={m.id}
+                  >
+                    <span className="rumble-member-name">{m.name}</span>
+                    {m.inRing && (
+                      <span className={"survival-badge " + (m.eliminated ? "out" : "in")}>
+                        {m.eliminated ? t("gameDetail.out") : t("gameDetail.inRingShort")}
+                      </span>
+                    )}
+                    {canEdit && (
+                      <div className="rumble-member-actions">
+                        {!m.inRing ? (
+                          <button className="btn btn-xs" onClick={() => run(() => api.addRingPlayer(token, game.id, m.id))}>
+                            {t("gameDetail.addToRing")}
+                          </button>
+                        ) : m.eliminated ? null : (
+                          <>
+                            <button
+                              className="btn btn-xs btn-danger"
+                              onClick={() => run(() => api.setRingPlayer(token, game.id, m.id, true))}
+                            >
+                              {t("gameDetail.eliminate")}
+                            </button>
+                            <button
+                              className="btn btn-xs"
+                              onClick={() => run(() => api.removeRingPlayer(token, game.id, m.id))}
+                            >
+                              {t("gameDetail.removeFromRing")}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             </div>
           ))}
@@ -977,7 +989,7 @@ function RumbleView({ game, canEdit, token, reload, onError, t }) {
             {tasks.map((task) => {
               const launched = !!task.launchedAt;
               const remaining = launched
-                ? task.durationSeconds - (now - new Date(task.launchedAt).getTime()) / 1000
+                ? Math.min(task.durationSeconds, task.durationSeconds - (now - new Date(task.launchedAt).getTime()) / 1000)
                 : task.durationSeconds;
               const timeUp = launched && remaining <= 0;
               return (
@@ -999,7 +1011,7 @@ function RumbleView({ game, canEdit, token, reload, onError, t }) {
                           {t("tasks.launch")}
                         </button>
                       )}
-                      {activeTeams.length > 0 && (
+                      {teams.length > 0 && (
                         <button className="btn btn-sm" onClick={() => setAwardTask(task)}>
                           {t("gameDetail.award")}
                         </button>
@@ -1021,13 +1033,15 @@ function RumbleView({ game, canEdit, token, reload, onError, t }) {
           <p className="empty-note" style={{ marginTop: 0 }}>
             +{awardTask.points} {t("teams.points")}
           </p>
-          {activeTeams.map((tm) => (
-            <div className="member-pick-row" key={tm.id}>
-              <span className="member-pick-name">{tm.name}</span>
+          {teams.map((tm) => (
+            <div className="member-pick-row" key={tm.teamId}>
+              <span className="member-pick-name">
+                {tm.teamName} <span className="rumble-team-points">· {tm.points} {t("teams.points")}</span>
+              </span>
               <button
                 className="btn btn-sm btn-primary"
                 onClick={() =>
-                  run(() => api.awardRumbleTask(token, game.id, awardTask.id, tm.id)).then(() => setAwardTask(null))
+                  run(() => api.awardRumbleTask(token, game.id, awardTask.id, tm.teamId)).then(() => setAwardTask(null))
                 }
               >
                 {t("gameDetail.award")}
@@ -1048,7 +1062,6 @@ function RumbleView({ game, canEdit, token, reload, onError, t }) {
           confirmLabel={confirm.kind === "resetRing" ? t("gameDetail.resetRing") : t("common.delete")}
           onConfirm={() => {
             if (confirm.kind === "resetRing") run(() => api.resetRing(token, game.id));
-            else if (confirm.kind === "removeTeam") run(() => api.removeRingTeam(token, game.id, confirm.id));
             else if (confirm.kind === "removeTask") run(() => api.deleteRumbleTask(token, game.id, confirm.id));
             setConfirm(null);
           }}

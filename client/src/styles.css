@@ -623,57 +623,77 @@ button {
 .card-art-swatch .card-face {
   filter: none;
 }
-.rumble-ring {
+.rumble-teams-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-sm);
-  margin-top: var(--space-md);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
 }
-.rumble-team {
-  display: flex;
+.rumble-team-col {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
-}
-.rumble-team.eliminated {
-  opacity: 0.6;
-}
-.rumble-team-bar {
-  width: 8px;
-  flex-shrink: 0;
-}
-.rumble-team-body {
-  padding: 12px 14px;
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
-.rumble-team-head {
+.rumble-team-banner {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
+  padding: 10px 14px;
+  color: #fff;
+  font-weight: 700;
 }
-.rumble-team.eliminated .rumble-team-name {
+.rumble-team-count {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.rumble-team-members {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rumble-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+.rumble-member.in-ring {
+  background: color-mix(in srgb, var(--olive) 10%, var(--card));
+}
+.rumble-member.eliminated {
+  opacity: 0.55;
+}
+.rumble-member.eliminated .rumble-member-name {
   text-decoration: line-through;
 }
-.rumble-team-name {
-  font-weight: 700;
+.rumble-member-name {
+  font-weight: 600;
+  flex: 1;
+  min-width: 90px;
+}
+.rumble-member-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .rumble-team-points {
   font-size: 0.85rem;
   color: var(--ink-soft);
   white-space: nowrap;
 }
-.rumble-add-select {
-  padding: 8px 12px;
+.btn-xs {
+  padding: 3px 9px;
+  font-size: 0.75rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--ink);
-  font-size: 0.85rem;
 }
 .rumble-task {
   background: var(--card);

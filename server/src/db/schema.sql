@@ -97,13 +97,15 @@ CREATE TABLE IF NOT EXISTS game_cards (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Royal Rumble: which global teams are in the ring, and their elimination state.
-CREATE TABLE IF NOT EXISTS game_rumble_teams (
+-- Royal Rumble: individual served members chosen (from their teams) into the
+-- ring, and their elimination state. A member who is eliminated can only return
+-- to the ring after a reset.
+CREATE TABLE IF NOT EXISTS game_rumble_players (
   game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-  team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   eliminated BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (game_id, team_id)
+  PRIMARY KEY (game_id, user_id)
 );
 
 -- Royal Rumble tasks: title + instructions + points reward + optional timer.

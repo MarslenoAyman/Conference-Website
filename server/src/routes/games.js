@@ -471,15 +471,31 @@ async function playerPool(gameId) {
   return rows;
 }
 
-// Royal Rumble ring: global teams in the ring, with points + elimination.
-async function rumbleRing(gameId) {
-  const { rows } = await pool.query(
-    `SELECT t.id, t.name, t.color, t.points, grt.eliminated
-     FROM game_rumble_teams grt JOIN teams t ON t.id = grt.team_id
-     WHERE grt.game_id = $1 ORDER BY grt.eliminated, grt.created_at`,
+// Royal Rumble roster: every global team with its served members, each flagged
+// with whether they're in the ring and whether they've been eliminated.
+async function rumbleRoster(gameId) {
+  const { rows: teams } = await pool.query("SELECT id, name, color, points FROM teams ORDER BY name");
+  const { rows: members } = await pool.query(
+    `SELECT u.id, u.name, u.team_id,
+            (grp.user_id IS NOT NULL) AS in_ring,
+            COALESCE(grp.eliminated, false) AS eliminated
+     FROM users u
+     LEFT JOIN game_rumble_players grp ON grp.user_id = u.id AND grp.game_id = $1
+     WHERE u.team_id IS NOT NULL AND u.role <> 'full'
+     ORDER BY u.name`,
     [gameId]
   );
-  return rows.map((r) => ({ id: r.id, name: r.name, color: r.color, points: r.points, eliminated: r.eliminated }));
+  return teams
+    .map((t) => ({
+      teamId: t.id,
+      teamName: t.name,
+      color: t.color,
+      points: t.points,
+      members: members
+        .filter((m) => m.team_id === t.id)
+        .map((m) => ({ id: m.id, name: m.name, inRing: m.in_ring, eliminated: m.eliminated })),
+    }))
+    .filter((t) => t.members.length > 0);
 }
 
 async function rumbleTasks(gameId) {
@@ -657,9 +673,11 @@ router.get("/:id", async (req, res, next) => {
     }
 
     if (game.type === "rumble") {
-      game.ring = await rumbleRing(game.id);
+      game.rumbleTeams = await rumbleRoster(game.id);
       game.tasks = await rumbleTasks(game.id);
-      game.survivorCount = game.ring.filter((tm) => !tm.eliminated).length;
+      const inRing = game.rumbleTeams.flatMap((t) => t.members.filter((m) => m.inRing));
+      game.ringCount = inRing.length;
+      game.survivorCount = inRing.filter((m) => !m.eliminated).length;
       return res.json({ game });
     }
 
@@ -980,53 +998,63 @@ router.post("/:id/survivors/reset", requireRole("full"), async (req, res, next) 
   }
 });
 
-// ---- Royal Rumble: the ring (global teams) ----
+// ---- Royal Rumble: the ring (served members chosen from their teams) ----
 router.post("/:id/ring", requireRole("full"), async (req, res, next) => {
   try {
-    const { teamId } = req.body || {};
-    if (!teamId) return res.status(400).json({ error: "A team is required." });
-    const { rows: teamRows } = await pool.query("SELECT id FROM teams WHERE id = $1", [teamId]);
-    if (!teamRows[0]) return res.status(404).json({ error: "Team not found." });
-    await pool.query(
-      "INSERT INTO game_rumble_teams (game_id, team_id) VALUES ($1, $2) ON CONFLICT (game_id, team_id) DO NOTHING",
-      [req.params.id, teamId]
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: "A member is required." });
+    const { rows: u } = await pool.query("SELECT id FROM users WHERE id = $1", [userId]);
+    if (!u[0]) return res.status(404).json({ error: "Member not found." });
+    // Eliminated members can only return to the ring after a reset.
+    const { rows: existing } = await pool.query(
+      "SELECT eliminated FROM game_rumble_players WHERE game_id = $1 AND user_id = $2",
+      [req.params.id, userId]
     );
-    res.status(201).json({ ring: await rumbleRing(req.params.id) });
+    if (existing[0]?.eliminated) {
+      return res.status(400).json({ error: "This member is eliminated until the ring is reset." });
+    }
+    await pool.query(
+      "INSERT INTO game_rumble_players (game_id, user_id) VALUES ($1, $2) ON CONFLICT (game_id, user_id) DO NOTHING",
+      [req.params.id, userId]
+    );
+    res.status(201).json({ rumbleTeams: await rumbleRoster(req.params.id) });
   } catch (err) {
     next(err);
   }
 });
 
-router.delete("/:id/ring/:teamId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/ring/:userId", requireRole("full"), async (req, res, next) => {
   try {
-    await pool.query("DELETE FROM game_rumble_teams WHERE game_id = $1 AND team_id = $2", [
+    await pool.query("DELETE FROM game_rumble_players WHERE game_id = $1 AND user_id = $2", [
       req.params.id,
-      req.params.teamId,
+      req.params.userId,
     ]);
-    res.json({ ring: await rumbleRing(req.params.id) });
+    res.json({ rumbleTeams: await rumbleRoster(req.params.id) });
   } catch (err) {
     next(err);
   }
 });
 
-router.put("/:id/ring/:teamId", requireRole("full"), async (req, res, next) => {
+// Eliminate a ring member (they cannot rejoin until the ring is reset).
+router.put("/:id/ring/:userId", requireRole("full"), async (req, res, next) => {
   try {
     const eliminated = !!req.body?.eliminated;
-    await pool.query("UPDATE game_rumble_teams SET eliminated = $1 WHERE game_id = $2 AND team_id = $3", [
+    await pool.query("UPDATE game_rumble_players SET eliminated = $1 WHERE game_id = $2 AND user_id = $3", [
       eliminated,
       req.params.id,
-      req.params.teamId,
+      req.params.userId,
     ]);
-    res.json({ ring: await rumbleRing(req.params.id) });
+    res.json({ rumbleTeams: await rumbleRoster(req.params.id) });
   } catch (err) {
     next(err);
   }
 });
 
+// Reset the ring: revive every eliminated member so they can play again.
 router.post("/:id/ring/reset", requireRole("full"), async (req, res, next) => {
   try {
-    await pool.query("UPDATE game_rumble_teams SET eliminated = false WHERE game_id = $1", [req.params.id]);
-    res.json({ ring: await rumbleRing(req.params.id) });
+    await pool.query("UPDATE game_rumble_players SET eliminated = false WHERE game_id = $1", [req.params.id]);
+    res.json({ rumbleTeams: await rumbleRoster(req.params.id) });
   } catch (err) {
     next(err);
   }
@@ -1094,7 +1122,7 @@ router.post("/:id/tasks/:taskId/award", requireRole("full"), async (req, res, ne
     );
     if (!teamRows[0]) return res.status(404).json({ error: "Team not found." });
     await notify(`${teamRows[0].name} +${taskRows[0].points} — ${taskRows[0].title}`, "info");
-    res.json({ ring: await rumbleRing(req.params.id) });
+    res.json({ rumbleTeams: await rumbleRoster(req.params.id) });
   } catch (err) {
     next(err);
   }
