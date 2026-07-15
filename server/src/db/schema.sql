@@ -38,6 +38,12 @@ CREATE TABLE IF NOT EXISTS instruction_sections (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE instructions ADD COLUMN IF NOT EXISTS section_id TEXT REFERENCES instruction_sections(id) ON DELETE CASCADE;
+-- Instructions and section names are auto-translated so they read in the
+-- viewer's theme language. text/name stay as the original (legacy fallback).
+ALTER TABLE instructions ADD COLUMN IF NOT EXISTS text_ar TEXT;
+ALTER TABLE instructions ADD COLUMN IF NOT EXISTS text_en TEXT;
+ALTER TABLE instruction_sections ADD COLUMN IF NOT EXISTS name_ar TEXT;
+ALTER TABLE instruction_sections ADD COLUMN IF NOT EXISTS name_en TEXT;
 
 CREATE TABLE IF NOT EXISTS timeline_days (
   id TEXT PRIMARY KEY,

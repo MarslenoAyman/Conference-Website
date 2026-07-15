@@ -9,7 +9,10 @@ const CIRCLE_COLORS = ["var(--olive)", "var(--gold)", "var(--maroon)", "var(--ol
 
 export default function Instructions() {
   const { user, token } = useAuth();
-  const { t, tError } = useLanguage();
+  const { t, tError, lang } = useLanguage();
+  // Show each section name / instruction in the active theme language.
+  const nameOf = (s) => (lang === "ar" ? s.nameAr : s.nameEn) || s.name;
+  const textOf = (i) => (lang === "ar" ? i.textAr : i.textEn) || i.text;
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -123,7 +126,7 @@ export default function Instructions() {
           {sections.map((section) => (
             <section className="instr-section" key={section.id}>
               <div className="instr-section-head">
-                <h2 className="instr-section-title">{section.name}</h2>
+                <h2 className="instr-section-title">{nameOf(section)}</h2>
                 {canEdit && (
                   <button className="btn btn-sm btn-danger" onClick={() => deleteSection(section.id)}>
                     {t("instructions.deleteSection")}
@@ -164,14 +167,14 @@ export default function Instructions() {
                           </>
                         ) : (
                           <>
-                            <div className="instruction-text">{item.text}</div>
+                            <div className="instruction-text">{textOf(item)}</div>
                             {canEdit && (
                               <div className="card-actions">
                                 <button
                                   className="btn btn-sm"
                                   onClick={() => {
                                     setEditingId(item.id);
-                                    setEditText(item.text);
+                                    setEditText(textOf(item));
                                   }}
                                 >
                                   {t("common.edit")}
