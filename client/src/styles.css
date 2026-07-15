@@ -168,14 +168,15 @@ button {
 }
 .nav-links {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
   flex-wrap: wrap;
 }
+/* Font/padding kept compact so all nav sections fit side by side on laptops. */
 .nav-link {
-  padding: 8px 14px;
+  padding: 7px 10px;
   border-radius: 999px;
-  font-size: 0.906rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   text-decoration: none;
   color: var(--ink-soft);
@@ -1678,6 +1679,192 @@ button {
 .member-pick-status {
   font-size: 0.75rem;
   color: var(--ink-soft);
+}
+
+/* Tasks */
+.task-grid {
+  align-items: start;
+}
+.task-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.task-card.task-timeup {
+  border-color: color-mix(in srgb, var(--brick) 45%, var(--border));
+}
+.task-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.task-top h3 {
+  font-size: 1.1875rem;
+}
+.task-points {
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--olive) 16%, var(--card));
+  color: var(--olive-dark);
+  border: 1px solid color-mix(in srgb, var(--olive) 35%, var(--border));
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.task-desc {
+  color: var(--ink-soft);
+  font-size: 0.906rem;
+  line-height: 1.5;
+  margin: 0;
+}
+.task-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  color: var(--ink-soft);
+}
+.task-timer.up {
+  background: color-mix(in srgb, var(--brick) 12%, var(--card));
+  border-color: color-mix(in srgb, var(--brick) 35%, var(--border));
+  color: var(--brick);
+  font-weight: 700;
+}
+.task-countdown {
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--olive-dark);
+  letter-spacing: 0.03em;
+  direction: ltr;
+}
+.task-timer-idle {
+  font-size: 0.844rem;
+}
+.task-finishers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.844rem;
+}
+.task-finishers-label {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.task-finisher-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--card-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.8125rem;
+}
+.chip-x {
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+}
+.chip-x:hover {
+  color: var(--brick);
+}
+.task-fields {
+  gap: 8px;
+}
+.task-num {
+  max-width: 110px;
+}
+.task-edit-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  background: #fff;
+}
+:root[data-theme="dark"] .task-edit-input,
+:root[data-theme="dark"] .task-num {
+  background: var(--card-alt);
+  color: var(--ink);
+}
+
+/* Notification toasts */
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  inset-inline-end: 16px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+.toast-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--olive) 35%, var(--border));
+  border-inline-start: 4px solid var(--olive);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: 0 4px 18px rgba(43, 38, 32, 0.16);
+  animation: toast-in 0.25s ease;
+}
+.toast-warning {
+  border-color: color-mix(in srgb, var(--brick) 40%, var(--border));
+  border-inline-start-color: var(--brick);
+  background: color-mix(in srgb, var(--brick) 8%, var(--card));
+}
+.toast-icon {
+  flex-shrink: 0;
+  font-size: 1.05rem;
+}
+.toast-msg {
+  flex: 1;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.toast-close {
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+.toast-close:hover {
+  color: var(--brick);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Mobile nav */

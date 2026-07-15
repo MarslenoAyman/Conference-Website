@@ -179,3 +179,32 @@ CREATE TABLE IF NOT EXISTS bonus_log (
 );
 
 ALTER TABLE bonus_log ADD COLUMN IF NOT EXISTS actor_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+
+-- Tasks: full-access servants set tasks (with a reward and an optional timed
+-- countdown) that served members complete for Bonus points.
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  points INTEGER NOT NULL DEFAULT 0,
+  duration_seconds INTEGER NOT NULL DEFAULT 0,
+  launched_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Which served members have been marked as finishing a task (each award logged
+-- in bonus_log at completion time).
+CREATE TABLE IF NOT EXISTS task_completions (
+  task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (task_id, user_id)
+);
+
+-- Site-wide notifications polled by every signed-in user (toast cards).
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  message TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'info',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

@@ -87,4 +87,15 @@ export const api = {
   deleteBonusMember: (token, userId) => request(`/bonus/${userId}`, { method: "DELETE", token }),
 
   getUsers: (token) => request("/users", { token }),
+
+  getTasks: (token) => request("/tasks", { token }),
+  addTask: (token, task) => request("/tasks", { method: "POST", body: task, token }),
+  updateTask: (token, id, task) => request(`/tasks/${id}`, { method: "PUT", body: task, token }),
+  deleteTask: (token, id) => request(`/tasks/${id}`, { method: "DELETE", token }),
+  launchTask: (token, id) => request(`/tasks/${id}/launch`, { method: "POST", token }),
+  completeTask: (token, id, userId) => request(`/tasks/${id}/complete`, { method: "POST", body: { userId }, token }),
+  removeTaskCompletion: (token, id, userId) => request(`/tasks/${id}/complete/${userId}`, { method: "DELETE", token }),
+
+  getNotifications: (token, since) =>
+    request(`/notifications${since ? `?since=${encodeURIComponent(since)}` : ""}`, { token }),
 };

@@ -12,6 +12,8 @@ import gamesRoutes from "./src/routes/games.js";
 import teamsRoutes from "./src/routes/teams.js";
 import bonusRoutes from "./src/routes/bonus.js";
 import usersRoutes from "./src/routes/users.js";
+import tasksRoutes from "./src/routes/tasks.js";
+import notificationsRoutes from "./src/routes/notifications.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -27,6 +29,8 @@ app.use("/api/games", gamesRoutes);
 app.use("/api/teams", teamsRoutes);
 app.use("/api/bonus", bonusRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/tasks", tasksRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 // Serve the built React app in production (single-service deploy)
 const clientDist = path.join(__dirname, "..", "client", "dist");

@@ -7,7 +7,9 @@ import Home from "./pages/Home.jsx";
 import Instructions from "./pages/Instructions.jsx";
 import Timeline from "./pages/Timeline.jsx";
 import Topics from "./pages/Topics.jsx";
+import Tasks from "./pages/Tasks.jsx";
 import Games from "./pages/Games.jsx";
+import Notifications from "./components/Notifications.jsx";
 import GameDetail from "./pages/GameDetail.jsx";
 import Teams from "./pages/Teams.jsx";
 import Bonuses from "./pages/Bonuses.jsx";
@@ -28,6 +30,7 @@ export default function App() {
   return (
     <div className="app-shell">
       {user && <Navbar />}
+      {user && <Notifications />}
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
         <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
@@ -60,6 +63,14 @@ export default function App() {
           element={
             <Protected>
               <Topics />
+            </Protected>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <Protected>
+              <Tasks />
             </Protected>
           }
         />

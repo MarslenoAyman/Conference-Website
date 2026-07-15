@@ -14,6 +14,7 @@ export default function Navbar() {
     { to: "/instructions", label: t("nav.instructions"), show: true },
     { to: "/timeline", label: t("nav.timeline"), show: true },
     { to: "/topics", label: t("nav.topics"), show: true },
+    { to: "/tasks", label: t("nav.tasks"), show: true },
     { to: "/games", label: t("nav.games"), show: true },
     { to: "/teams", label: t("nav.teams"), show: true },
     { to: "/bonuses", label: t("nav.bonuses"), show: true },
