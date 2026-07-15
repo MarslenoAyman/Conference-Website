@@ -1410,7 +1410,7 @@ function ShowcaseView({ cards, canEdit, onAdd, onRemove, t }) {
   }
 
   return (
-    <div className="section-gap">
+    <div>
       {cards.length === 0 ? (
         <p className="empty-note">{t("gameDetail.noCardsYet")}</p>
       ) : (

@@ -268,7 +268,9 @@ function TaskCard({ task, now, canEdit, onLaunch, onEdit, onDelete, onMarkFinish
   let countdown = null;
   if (task.launchedAt && task.durationSeconds > 0) {
     const endsAt = new Date(task.launchedAt).getTime() + task.durationSeconds * 1000;
-    const remainingSec = Math.max(0, Math.ceil((endsAt - now) / 1000));
+    // Clamp to the set duration so client/server clock skew can't make it start
+    // above the chosen time (e.g. showing 30:02 for a 30-minute task).
+    const remainingSec = Math.max(0, Math.min(task.durationSeconds, Math.ceil((endsAt - now) / 1000)));
     countdown = { remainingSec, timeUp: endsAt - now <= 0 };
   }
 

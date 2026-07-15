@@ -536,19 +536,18 @@ button {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 4px;
-}
-.game-detail-header {
-  margin-bottom: 0;
+  /* Uniform gap between the header (icon + name + responsible) and the first
+     content block, identical across every game type. */
+  margin-bottom: var(--space-lg);
 }
 .game-detail-header .game-manager {
   margin-bottom: 0;
 }
-/* Roster teams / player pool sit close under the game header instead of a full
-   section gap. */
+/* The first content block of any game view relies on the header's margin for
+   its top spacing, so every game looks identically spaced. */
 .roster-grid,
 .players-section {
-  margin-top: var(--space-sm);
+  margin-top: 0;
 }
 .game-detail-header .game-icon {
   width: 56px;
