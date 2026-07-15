@@ -157,6 +157,8 @@ CREATE TABLE IF NOT EXISTS game_players (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE (game_id, user_id)
 );
+-- Elimination flag for survival games (Squid Game); daily reset revives all.
+ALTER TABLE game_players ADD COLUMN IF NOT EXISTS eliminated BOOLEAN NOT NULL DEFAULT false;
 
 -- Competitors formed on fixture generation for player games: one player
 -- (singles) or two players (doubles / "couple"). player2_id null = singles.

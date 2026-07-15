@@ -66,6 +66,9 @@ export const api = {
   addGameEntry: (token, gameId, playerIds) =>
     request(`/games/${gameId}/entries`, { method: "POST", body: { playerIds }, token }),
   removeGameEntry: (token, gameId, pairId) => request(`/games/${gameId}/entries/${pairId}`, { method: "DELETE", token }),
+  setSurvivor: (token, gameId, userId, eliminated) =>
+    request(`/games/${gameId}/survivors/${userId}`, { method: "PUT", body: { eliminated }, token }),
+  resetSurvivors: (token, gameId) => request(`/games/${gameId}/survivors/reset`, { method: "POST", token }),
   addToRoster: (token, gameId, teamId, userId) =>
     request(`/games/${gameId}/roster`, { method: "POST", body: { teamId, userId }, token }),
   removeFromRoster: (token, gameId, userId) =>

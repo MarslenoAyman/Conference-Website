@@ -469,6 +469,16 @@ async function playerPool(gameId) {
   return rows;
 }
 
+// Survival board (Squid Game): picked players with their elimination state.
+async function survivalPlayers(gameId) {
+  const { rows } = await pool.query(
+    `SELECT gp.user_id AS id, u.name, gp.eliminated FROM game_players gp
+     JOIN users u ON u.id = gp.user_id WHERE gp.game_id = $1 ORDER BY gp.eliminated, u.name`,
+    [gameId]
+  );
+  return rows.map((r) => ({ id: r.id, name: r.name, eliminated: r.eliminated }));
+}
+
 // Form the competitor list: singles = one game_pair per player; doubles = players
 // shuffled and paired two at a time (a leftover odd player becomes a solo pair).
 async function buildPlayerPairs(gameId, teamSize) {
@@ -607,6 +617,14 @@ router.get("/:id", async (req, res, next) => {
 
     if (game.type === "showcase") {
       game.cards = await cardsView(game.id);
+      return res.json({ game });
+    }
+
+    if (game.type === "survival") {
+      const players = await survivalPlayers(game.id);
+      game.players = players;
+      game.playerCount = players.length;
+      game.survivorCount = players.filter((p) => !p.eliminated).length;
       return res.json({ game });
     }
 
@@ -898,6 +916,30 @@ router.delete("/:id/entries/:pairId", requireRole("full"), async (req, res, next
     await pool.query("DELETE FROM matches WHERE game_id = $1", [req.params.id]);
     await pool.query("UPDATE games SET fixtures_ready = false WHERE id = $1", [req.params.id]);
     res.json({ entries: await stationEntries(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Survival games (Squid Game): eliminate / revive a player, or reset the day.
+router.put("/:id/survivors/:userId", requireRole("full"), async (req, res, next) => {
+  try {
+    const eliminated = !!req.body?.eliminated;
+    await pool.query("UPDATE game_players SET eliminated = $1 WHERE game_id = $2 AND user_id = $3", [
+      eliminated,
+      req.params.id,
+      req.params.userId,
+    ]);
+    res.json({ players: await survivalPlayers(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/survivors/reset", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("UPDATE game_players SET eliminated = false WHERE game_id = $1", [req.params.id]);
+    res.json({ players: await survivalPlayers(req.params.id) });
   } catch (err) {
     next(err);
   }

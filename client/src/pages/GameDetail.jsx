@@ -98,6 +98,41 @@ export default function GameDetail() {
     }
   }
 
+  async function addSurvivor(userId) {
+    try {
+      await api.addGamePlayer(token, id, userId);
+      const { game: fresh } = await api.getGame(token, id);
+      setGame(fresh);
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function removeSurvivor(userId) {
+    try {
+      await api.removeGamePlayer(token, id, userId);
+      const { game: fresh } = await api.getGame(token, id);
+      setGame(fresh);
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function setEliminated(userId, eliminated) {
+    try {
+      const { players } = await api.setSurvivor(token, id, userId, eliminated);
+      setGame((prev) => ({ ...prev, players, survivorCount: players.filter((p) => !p.eliminated).length }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function resetSurvivors() {
+    try {
+      const { players } = await api.resetSurvivors(token, id);
+      setGame((prev) => ({ ...prev, players, survivorCount: players.filter((p) => !p.eliminated).length }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
   async function addEntry(playerIds) {
     try {
       const { entries } = await api.addGameEntry(token, id, playerIds);
@@ -341,6 +376,17 @@ export default function GameDetail() {
 
       {game.type === "showcase" ? (
         <ShowcaseView cards={game.cards || []} canEdit={canEdit} onAdd={addCard} onRemove={removeCard} t={t} />
+      ) : game.type === "survival" ? (
+        <SurvivalView
+          game={game}
+          canEdit={canEdit}
+          allUsers={allUsers}
+          onAdd={addSurvivor}
+          onRemove={removeSurvivor}
+          onSetEliminated={setEliminated}
+          onReset={resetSurvivors}
+          t={t}
+        />
       ) : game.type === "station" ? (
         <StationView
           game={game}
@@ -755,6 +801,90 @@ export default function GameDetail() {
         />
       )}
     </div>
+  );
+}
+
+function SurvivalView({ game, canEdit, allUsers, onAdd, onRemove, onSetEliminated, onReset, t }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [confirm, setConfirm] = useState(null); // {type, id}
+  const players = game.players || [];
+  const survivors = players.filter((p) => !p.eliminated);
+  const eliminated = players.filter((p) => p.eliminated);
+
+  return (
+    <>
+      <div className="competition-head">
+        <h2 className="competition-title">{t("gameDetail.survivalBoard")}</h2>
+        <div className="competition-stats">
+          <span>
+            {t("gameDetail.stillIn")}: <strong>{survivors.length}</strong>
+          </span>
+          <span>
+            {t("gameDetail.eliminatedCount")}: <strong>{eliminated.length}</strong>
+          </span>
+        </div>
+      </div>
+
+      {canEdit && (
+        <div className="competition-controls">
+          <button className="btn btn-sm" onClick={() => setShowAdd(true)}>
+            + {t("gameDetail.addPlayer")}
+          </button>
+          {eliminated.length > 0 && (
+            <button className="btn btn-sm btn-primary" onClick={() => setConfirm({ type: "reset" })}>
+              {t("gameDetail.dailyReset")}
+            </button>
+          )}
+        </div>
+      )}
+
+      {players.length === 0 ? (
+        <p className="empty-note">{t("gameDetail.noPlayersYet")}</p>
+      ) : (
+        <div className="survival-grid">
+          {players.map((p) => (
+            <div className={"survival-card" + (p.eliminated ? " eliminated" : "")} key={p.id}>
+              <span className="survival-name">{p.name}</span>
+              <span className={"survival-badge " + (p.eliminated ? "out" : "in")}>
+                {p.eliminated ? t("gameDetail.out") : t("gameDetail.in")}
+              </span>
+              {canEdit && (
+                <div className="survival-actions">
+                  <button className="btn btn-sm" onClick={() => onSetEliminated(p.id, !p.eliminated)}>
+                    {p.eliminated ? t("gameDetail.revive") : t("gameDetail.eliminate")}
+                  </button>
+                  <button className="btn btn-sm btn-danger" onClick={() => setConfirm({ type: "remove", id: p.id })}>
+                    {t("common.delete")}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAdd && (
+        <AddPlayerModal
+          allUsers={allUsers}
+          poolIds={new Set(players.map((p) => p.id))}
+          onAdd={onAdd}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
+      {confirm && (
+        <ConfirmModal
+          message={confirm.type === "reset" ? t("gameDetail.dailyResetConfirm") : t("common.confirmDeleteGeneric")}
+          danger={confirm.type === "remove"}
+          confirmLabel={confirm.type === "reset" ? t("gameDetail.dailyReset") : t("common.delete")}
+          onConfirm={() => {
+            if (confirm.type === "reset") onReset();
+            else onRemove(confirm.id);
+            setConfirm(null);
+          }}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+    </>
   );
 }
 

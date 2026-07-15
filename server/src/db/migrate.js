@@ -95,6 +95,7 @@ const GAMES = [
   ["الطاولة", "tawla", "players", "league", 1, "Fr Philopater Girgis", true],
   ["الكوتشينة", "cards", "showcase", "league", 1, "Mr Andrew Amir", false],
   ["بلايستيشن", "gamepad", "station", "league", 1, "Mr Andrew Samir", false],
+  ["لعبة الحبار", "squid", "survival", "league", 1, "Mr Marsleno Ayman & Mr Amir Ashraf", false],
 ];
 
 // Showcase cards seeded for a game (matched to the game by its icon key).
@@ -180,7 +181,7 @@ async function seedIfEmpty() {
     const gameId = randomUUID();
     await pool.query(
       "INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only, all_served_view) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-      [gameId, name, icon, type, format, teamSize, manager, singlesOnly, type === "showcase"]
+      [gameId, name, icon, type, format, teamSize, manager, singlesOnly, type === "showcase" || type === "survival"]
     );
     const cards = SHOWCASE_CARDS[icon];
     if (cards) {
