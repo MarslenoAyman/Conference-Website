@@ -1681,6 +1681,50 @@ button {
   color: var(--ink-soft);
 }
 
+/* Instruction sections */
+.instr-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+  margin-top: var(--space-lg);
+}
+.instr-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: var(--space-md);
+}
+.instr-section-title {
+  font-size: 1.5rem;
+  color: var(--olive-dark);
+}
+.instr-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.instr-add-row {
+  margin-top: var(--space-md);
+}
+
+/* Confirm dialog */
+.confirm-message {
+  font-size: 0.969rem;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0 0 20px;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 /* Tasks */
 .task-grid {
   align-items: start;
@@ -1996,7 +2040,8 @@ button {
   }
   .grid-2,
   .grid-teams,
-  .explore-grid {
+  .explore-grid,
+  .instr-list {
     grid-template-columns: 1fr;
   }
   .add-row {

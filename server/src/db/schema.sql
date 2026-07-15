@@ -30,6 +30,15 @@ CREATE TABLE IF NOT EXISTS instructions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Named instruction categories ("Spiritual", "Games", …); each holds its own
+-- instructions.
+CREATE TABLE IF NOT EXISTS instruction_sections (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE instructions ADD COLUMN IF NOT EXISTS section_id TEXT REFERENCES instruction_sections(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS timeline_days (
   id TEXT PRIMARY KEY,
   day_number INTEGER NOT NULL,
@@ -208,3 +217,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   kind TEXT NOT NULL DEFAULT 'info',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Per-user watermark of the last notification they've seen, so each user gets
+-- every notification exactly once even if they were offline when it fired.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_seen_at TIMESTAMPTZ;

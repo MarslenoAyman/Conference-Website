@@ -3,13 +3,16 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import Alert from "../components/Alert.jsx";
 
-const emptyDraft = { title: "", description: "", points: "", minutes: "", seconds: "" };
+const emptyDraft = { title: "", description: "", points: "", hours: "", minutes: "" };
 
 function fmt(totalSec) {
-  const m = Math.floor(totalSec / 60);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
@@ -24,6 +27,7 @@ export default function Tasks() {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(emptyDraft);
   const [finisherTaskId, setFinisherTaskId] = useState(null);
+  const [confirmState, setConfirmState] = useState(null);
   const [now, setNow] = useState(Date.now());
 
   const canEdit = user.role === "full";
@@ -52,13 +56,13 @@ export default function Tasks() {
   }, [canEdit]);
 
   function draftToBody(d) {
+    const hours = parseInt(d.hours, 10) || 0;
     const minutes = parseInt(d.minutes, 10) || 0;
-    const seconds = parseInt(d.seconds, 10) || 0;
     return {
       title: d.title,
       description: d.description,
       points: parseInt(d.points, 10) || 0,
-      durationSeconds: minutes * 60 + seconds,
+      durationSeconds: hours * 3600 + minutes * 60,
     };
   }
 
@@ -80,8 +84,8 @@ export default function Tasks() {
       title: task.title,
       description: task.description,
       points: String(task.points || ""),
-      minutes: String(Math.floor((task.durationSeconds || 0) / 60) || ""),
-      seconds: String((task.durationSeconds || 0) % 60 || ""),
+      hours: String(Math.floor((task.durationSeconds || 0) / 3600) || ""),
+      minutes: String(Math.floor(((task.durationSeconds || 0) % 3600) / 60) || ""),
     });
   }
   async function saveEdit(id) {
@@ -93,23 +97,35 @@ export default function Tasks() {
       setError(tError(err.message));
     }
   }
-  async function remove(id) {
-    if (!confirm(t("common.confirmDeleteGeneric"))) return;
-    try {
-      await api.deleteTask(token, id);
-      setTasks((prev) => prev.filter((tk) => tk.id !== id));
-    } catch (err) {
-      setError(tError(err.message));
-    }
+  function remove(id) {
+    setConfirmState({
+      message: t("common.confirmDeleteGeneric"),
+      danger: true,
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          await api.deleteTask(token, id);
+          setTasks((prev) => prev.filter((tk) => tk.id !== id));
+        } catch (err) {
+          setError(tError(err.message));
+        }
+      },
+    });
   }
-  async function launch(task) {
-    if (!confirm(t("tasks.launchWarn"))) return;
-    try {
-      const { task: fresh } = await api.launchTask(token, task.id);
-      setTasks((prev) => prev.map((tk) => (tk.id === task.id ? fresh : tk)));
-    } catch (err) {
-      setError(tError(err.message));
-    }
+  function launch(task) {
+    setConfirmState({
+      message: t("tasks.launchWarn"),
+      confirmLabel: t("tasks.launch"),
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          const { task: fresh } = await api.launchTask(token, task.id);
+          setTasks((prev) => prev.map((tk) => (tk.id === task.id ? fresh : tk)));
+        } catch (err) {
+          setError(tError(err.message));
+        }
+      },
+    });
   }
   async function addFinisher(taskId, userId) {
     try {
@@ -207,17 +223,17 @@ export default function Tasks() {
               className="task-num"
               type="text"
               inputMode="numeric"
-              placeholder={t("tasks.minutesPlaceholder")}
-              value={draft.minutes}
-              onChange={(e) => setDraft({ ...draft, minutes: e.target.value.replace(/[^0-9]/g, "") })}
+              placeholder={t("tasks.hoursPlaceholder")}
+              value={draft.hours}
+              onChange={(e) => setDraft({ ...draft, hours: e.target.value.replace(/[^0-9]/g, "") })}
             />
             <input
               className="task-num"
               type="text"
               inputMode="numeric"
-              placeholder={t("tasks.secondsPlaceholder")}
-              value={draft.seconds}
-              onChange={(e) => setDraft({ ...draft, seconds: e.target.value.replace(/[^0-9]/g, "") })}
+              placeholder={t("tasks.minutesPlaceholder")}
+              value={draft.minutes}
+              onChange={(e) => setDraft({ ...draft, minutes: e.target.value.replace(/[^0-9]/g, "") })}
             />
             <button className="btn btn-primary" type="submit">
               {t("tasks.addButton")}
@@ -232,6 +248,16 @@ export default function Tasks() {
           servedUsers={servedUsers}
           onAdd={(uid) => addFinisher(finisherTask.id, uid)}
           onClose={() => setFinisherTaskId(null)}
+        />
+      )}
+
+      {confirmState && (
+        <ConfirmModal
+          message={confirmState.message}
+          confirmLabel={confirmState.confirmLabel}
+          danger={confirmState.danger}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirmState(null)}
         />
       )}
     </div>
@@ -342,17 +368,17 @@ function TaskEditCard({ draft, setDraft, onSave, onCancel, t }) {
           className="task-num"
           type="text"
           inputMode="numeric"
-          placeholder={t("tasks.minutesPlaceholder")}
-          value={draft.minutes}
-          onChange={(e) => setDraft({ ...draft, minutes: e.target.value.replace(/[^0-9]/g, "") })}
+          placeholder={t("tasks.hoursPlaceholder")}
+          value={draft.hours}
+          onChange={(e) => setDraft({ ...draft, hours: e.target.value.replace(/[^0-9]/g, "") })}
         />
         <input
           className="task-num"
           type="text"
           inputMode="numeric"
-          placeholder={t("tasks.secondsPlaceholder")}
-          value={draft.seconds}
-          onChange={(e) => setDraft({ ...draft, seconds: e.target.value.replace(/[^0-9]/g, "") })}
+          placeholder={t("tasks.minutesPlaceholder")}
+          value={draft.minutes}
+          onChange={(e) => setDraft({ ...draft, minutes: e.target.value.replace(/[^0-9]/g, "") })}
         />
       </div>
       <div className="card-actions">

@@ -22,7 +22,11 @@ export const api = {
   me: (token) => request("/auth/me", { token }),
 
   getInstructions: (token) => request("/instructions", { token }),
-  addInstruction: (token, text) => request("/instructions", { method: "POST", body: { text }, token }),
+  addInstructionSection: (token, name) =>
+    request("/instructions/sections", { method: "POST", body: { name }, token }),
+  deleteInstructionSection: (token, id) => request(`/instructions/sections/${id}`, { method: "DELETE", token }),
+  addInstruction: (token, text, sectionId) =>
+    request("/instructions", { method: "POST", body: { text, sectionId }, token }),
   updateInstruction: (token, id, text) => request(`/instructions/${id}`, { method: "PUT", body: { text }, token }),
   deleteInstruction: (token, id) => request(`/instructions/${id}`, { method: "DELETE", token }),
 
@@ -96,6 +100,6 @@ export const api = {
   completeTask: (token, id, userId) => request(`/tasks/${id}/complete`, { method: "POST", body: { userId }, token }),
   removeTaskCompletion: (token, id, userId) => request(`/tasks/${id}/complete/${userId}`, { method: "DELETE", token }),
 
-  getNotifications: (token, since) =>
-    request(`/notifications${since ? `?since=${encodeURIComponent(since)}` : ""}`, { token }),
+  getNotifications: (token) => request("/notifications", { token }),
+  markNotificationsSeen: (token, at) => request("/notifications/seen", { method: "POST", body: { at }, token }),
 };

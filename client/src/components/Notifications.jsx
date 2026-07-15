@@ -2,28 +2,30 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { api } from "../api.js";
 
-// Polls for site-wide notifications and shows new ones as toast cards on any
-// page. Only notifications created during the session are shown (live alerts).
+// Polls for the user's unseen notifications and shows them as toast cards.
+// The "seen" watermark lives on the server, so each notification reaches the
+// user exactly once — even if they were offline when it fired.
 export default function Notifications() {
   const { token } = useAuth();
   const [toasts, setToasts] = useState([]);
-  const lastSeen = useRef(null);
+  const shownIds = useRef(new Set());
 
   useEffect(() => {
     if (!token) return;
-    // Set the baseline once so re-renders never rewind it (which would miss
-    // notifications created between renders).
-    if (lastSeen.current === null) lastSeen.current = new Date().toISOString();
     let active = true;
 
     async function poll() {
       try {
-        const { notifications } = await api.getNotifications(token, lastSeen.current);
+        const { notifications } = await api.getNotifications(token);
         if (!active || !notifications || !notifications.length) return;
-        lastSeen.current = notifications[0].createdAt; // newest (list is DESC)
-        const fresh = [...notifications].reverse();
-        setToasts((prev) => [...prev, ...fresh].slice(-5));
-        fresh.forEach((n) => setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== n.id)), 9000));
+        const fresh = notifications.filter((n) => !shownIds.current.has(n.id));
+        if (fresh.length) {
+          fresh.forEach((n) => shownIds.current.add(n.id));
+          setToasts((prev) => [...prev, ...fresh].slice(-5));
+          fresh.forEach((n) => setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== n.id)), 9000));
+        }
+        const maxTs = notifications.reduce((m, n) => (n.createdAt > m ? n.createdAt : m), notifications[0].createdAt);
+        await api.markNotificationsSeen(token, maxTs);
       } catch {
         /* ignore transient poll errors */
       }
