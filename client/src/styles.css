@@ -543,8 +543,10 @@ button {
 .game-detail-header .game-manager {
   margin-bottom: 0;
 }
-/* Roster teams sit close under the game header instead of a full section gap. */
-.roster-grid {
+/* Roster teams / player pool sit close under the game header instead of a full
+   section gap. */
+.roster-grid,
+.players-section {
   margin-top: var(--space-sm);
 }
 .game-detail-header .game-icon {

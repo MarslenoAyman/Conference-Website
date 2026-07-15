@@ -395,7 +395,7 @@ export default function GameDetail() {
         </>
       ) : game.type === "players" ? (
         <>
-          <div className="section-gap">
+          <div className="players-section">
             <div className="competition-head">
               <h2 className="competition-title">{t("gameDetail.players")}</h2>
               <div className="competition-stats">
