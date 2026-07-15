@@ -63,9 +63,12 @@ export const api = {
     request(`/games/${gameId}/players/${userId}`, { method: "DELETE", token }),
   addGameCard: (token, gameId, card) => request(`/games/${gameId}/cards`, { method: "POST", body: card, token }),
   removeGameCard: (token, gameId, cardId) => request(`/games/${gameId}/cards/${cardId}`, { method: "DELETE", token }),
-  addGameEntry: (token, gameId, playerIds) =>
-    request(`/games/${gameId}/entries`, { method: "POST", body: { playerIds }, token }),
-  removeGameEntry: (token, gameId, pairId) => request(`/games/${gameId}/entries/${pairId}`, { method: "DELETE", token }),
+  addStationEntry: (token, gameId, cardId, playerIds) =>
+    request(`/games/${gameId}/cards/${cardId}/entries`, { method: "POST", body: { playerIds }, token }),
+  removeStationEntry: (token, gameId, cardId, pairId) =>
+    request(`/games/${gameId}/cards/${cardId}/entries/${pairId}`, { method: "DELETE", token }),
+  generateStationCard: (token, gameId, cardId, format) =>
+    request(`/games/${gameId}/cards/${cardId}/generate`, { method: "POST", body: { format }, token }),
   setSurvivor: (token, gameId, userId, eliminated) =>
     request(`/games/${gameId}/survivors/${userId}`, { method: "PUT", body: { eliminated }, token }),
   resetSurvivors: (token, gameId) => request(`/games/${gameId}/survivors/reset`, { method: "POST", token }),

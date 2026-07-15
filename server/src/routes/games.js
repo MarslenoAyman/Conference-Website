@@ -25,6 +25,7 @@ function toGame(row) {
   };
 }
 
+// Showcase cards (Card Game). Simple titled tiles, no competition.
 async function cardsView(gameId) {
   const { rows } = await pool.query(
     "SELECT id, title, subtitle, art FROM game_cards WHERE game_id = $1 ORDER BY sort, created_at",
@@ -33,17 +34,49 @@ async function cardsView(gameId) {
   return rows.map((c) => ({ id: c.id, title: c.title, subtitle: c.subtitle, art: c.art }));
 }
 
-// Play Station entries: each game_pair is one competitor — a single player or a
-// multi (2-player) team, mixed freely in the same competition.
-async function stationEntries(gameId) {
+// Play Station cards (FIFA / PES): each card is its own competition — its
+// entries, chosen format and generated standings/bracket.
+async function stationCards(gameId) {
+  const { rows } = await pool.query(
+    "SELECT id, title, subtitle, art, format, fixtures_ready FROM game_cards WHERE game_id = $1 ORDER BY sort, created_at",
+    [gameId]
+  );
+  const cards = [];
+  for (const c of rows) {
+    const entries = await stationEntries(gameId, c.id);
+    const card = {
+      id: c.id,
+      title: c.title,
+      subtitle: c.subtitle,
+      art: c.art,
+      format: c.format,
+      fixturesReady: c.fixtures_ready,
+      entries,
+      entryCount: entries.length,
+      matches: [],
+      standings: c.format === "league" ? [] : null,
+    };
+    if (c.fixtures_ready) {
+      const { matches, standings } = await playerCompetitionView(gameId, c.format, c.id);
+      card.matches = matches;
+      card.standings = standings;
+    }
+    cards.push(card);
+  }
+  return cards;
+}
+
+// Play Station entries for one card: each game_pair is one competitor — a single
+// player or a multi (2-player) team, mixed freely in that card's competition.
+async function stationEntries(gameId, cardId = null) {
   const { rows } = await pool.query(
     `SELECT gp.id, u1.id AS p1_id, u1.name AS p1_name, u2.id AS p2_id, u2.name AS p2_name
      FROM game_pairs gp
      JOIN users u1 ON u1.id = gp.player1_id
      LEFT JOIN users u2 ON u2.id = gp.player2_id
-     WHERE gp.game_id = $1
+     WHERE gp.game_id = $1 AND gp.card_id IS NOT DISTINCT FROM $2
      ORDER BY gp.created_at`,
-    [gameId]
+    [gameId, cardId]
   );
   return rows.map((r) => {
     const players = [{ id: r.p1_id, name: r.p1_name }];
@@ -373,14 +406,17 @@ function shuffle(arr) {
 // (league) win standings. A competitor is a game_pairs row: one player for
 // singles, two for doubles. Match sides are arrays of the competitor's players
 // so the shared MatchCard shows "A" or "A & B".
-async function playerCompetitionView(gameId, format) {
+// cardId scopes the competition to one Play Station card (FIFA/PES). For every
+// other game type it's null, which — via IS NOT DISTINCT FROM — matches exactly
+// the rows whose card_id is null, i.e. that game's single competition.
+async function playerCompetitionView(gameId, format, cardId = null) {
   const { rows: pairs } = await pool.query(
     `SELECT gp.id, u1.id AS p1_id, u1.name AS p1_name, u2.id AS p2_id, u2.name AS p2_name
      FROM game_pairs gp
      JOIN users u1 ON u1.id = gp.player1_id
      LEFT JOIN users u2 ON u2.id = gp.player2_id
-     WHERE gp.game_id = $1`,
-    [gameId]
+     WHERE gp.game_id = $1 AND gp.card_id IS NOT DISTINCT FROM $2`,
+    [gameId, cardId]
   );
   const pairById = {};
   for (const p of pairs) {
@@ -391,8 +427,8 @@ async function playerCompetitionView(gameId, format) {
   const side = (pairId) => (pairId && pairById[pairId] ? pairById[pairId].players : []);
 
   const { rows: matches } = await pool.query(
-    "SELECT * FROM matches WHERE game_id = $1 ORDER BY round, bracket_pos, created_at",
-    [gameId]
+    "SELECT * FROM matches WHERE game_id = $1 AND card_id IS NOT DISTINCT FROM $2 ORDER BY round, bracket_pos, created_at",
+    [gameId, cardId]
   );
   const matchList = matches.map((m) => ({
     id: m.id,
@@ -428,10 +464,10 @@ async function playerCompetitionView(gameId, format) {
 }
 
 // Advance cup winners into the next round's competitor slots (recomputed fresh).
-async function recomputePlayerBracket(gameId) {
+async function recomputePlayerBracket(gameId, cardId = null) {
   const { rows: matches } = await pool.query(
-    "SELECT * FROM matches WHERE game_id = $1 ORDER BY round, bracket_pos",
-    [gameId]
+    "SELECT * FROM matches WHERE game_id = $1 AND card_id IS NOT DISTINCT FROM $2 ORDER BY round, bracket_pos",
+    [gameId, cardId]
   );
   const byId = Object.fromEntries(matches.map((m) => [m.id, m]));
   for (const m of matches) {
@@ -563,25 +599,29 @@ async function generatePlayerFixtures(gameId, format, teamSize) {
   await buildFixturesFromPairs(gameId, format, ids);
 }
 
-// Play Station-style games: entries (game_pairs) are built manually by the
-// manager (each a single player or a multi pair), so generate fixtures over the
+// Play Station cards: entries (game_pairs) are built manually by the manager
+// (each a single player or a multi pair), so generate fixtures over that card's
 // existing entries without rebuilding them.
-async function generateStationFixtures(gameId, format) {
-  await pool.query("DELETE FROM matches WHERE game_id = $1", [gameId]);
-  const { rows } = await pool.query("SELECT id FROM game_pairs WHERE game_id = $1", [gameId]);
-  await buildFixturesFromPairs(gameId, format, shuffle(rows.map((r) => r.id)));
+async function generateStationFixtures(gameId, format, cardId) {
+  await pool.query("DELETE FROM matches WHERE game_id = $1 AND card_id IS NOT DISTINCT FROM $2", [gameId, cardId]);
+  const { rows } = await pool.query(
+    "SELECT id FROM game_pairs WHERE game_id = $1 AND card_id IS NOT DISTINCT FROM $2",
+    [gameId, cardId]
+  );
+  await buildFixturesFromPairs(gameId, format, shuffle(rows.map((r) => r.id)), cardId);
 }
 
 // Given the competitor pair ids, lay out League (round-robin) or Cup
-// (single-elimination) matches between them.
-async function buildFixturesFromPairs(gameId, format, ids) {
+// (single-elimination) matches between them. cardId scopes a Play Station card's
+// competition; null for every other game (one competition per game).
+async function buildFixturesFromPairs(gameId, format, ids, cardId = null) {
   if (format === "league") {
     let pos = 0;
     for (let i = 0; i < ids.length; i++) {
       for (let j = i + 1; j < ids.length; j++) {
         await pool.query(
-          "INSERT INTO matches (id, game_id, round, pair_a_id, pair_b_id, bracket_pos) VALUES ($1, $2, 1, $3, $4, $5)",
-          [randomUUID(), gameId, ids[i], ids[j], pos++]
+          "INSERT INTO matches (id, game_id, card_id, round, pair_a_id, pair_b_id, bracket_pos) VALUES ($1, $2, $3, 1, $4, $5, $6)",
+          [randomUUID(), gameId, cardId, ids[i], ids[j], pos++]
         );
       }
     }
@@ -607,9 +647,9 @@ async function buildFixturesFromPairs(gameId, format, ids) {
       const pA = r === 0 ? slots[2 * k] || null : null;
       const pB = r === 0 ? slots[2 * k + 1] || null : null;
       await pool.query(
-        `INSERT INTO matches (id, game_id, round, pair_a_id, pair_b_id, next_match_id, next_slot, bracket_pos)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [rIds[k], gameId, r + 1, pA, pB, nextId, nextSlot, k]
+        `INSERT INTO matches (id, game_id, card_id, round, pair_a_id, pair_b_id, next_match_id, next_slot, bracket_pos)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [rIds[k], gameId, cardId, r + 1, pA, pB, nextId, nextSlot, k]
       );
     }
   }
@@ -619,7 +659,7 @@ async function buildFixturesFromPairs(gameId, format, ids) {
     if (a && !b) await pool.query("UPDATE matches SET status = 'done', winner_side = 'a' WHERE id = $1", [rounds[0][k]]);
     else if (b && !a) await pool.query("UPDATE matches SET status = 'done', winner_side = 'b' WHERE id = $1", [rounds[0][k]]);
   }
-  await recomputePlayerBracket(gameId);
+  await recomputePlayerBracket(gameId, cardId);
 }
 
 router.get("/", async (req, res, next) => {
@@ -682,17 +722,7 @@ router.get("/:id", async (req, res, next) => {
     }
 
     if (game.type === "station") {
-      game.cards = await cardsView(game.id);
-      game.entries = await stationEntries(game.id);
-      game.entryCount = game.entries.length;
-      if (game.fixturesReady) {
-        const { matches, standings } = await playerCompetitionView(game.id, game.format);
-        game.matches = matches;
-        game.standings = standings;
-      } else {
-        game.matches = [];
-        game.standings = game.format === "league" ? [] : null;
-      }
+      game.cards = await stationCards(game.id);
       return res.json({ game });
     }
 
@@ -936,10 +966,18 @@ router.delete("/:id/cards/:cardId", requireRole("full"), async (req, res, next) 
   }
 });
 
-// Play Station entries: add a single (one player) or multi (two players) entry.
-// Adding/removing an entry clears any generated fixtures.
-router.post("/:id/entries", requireRole("full"), async (req, res, next) => {
+// Play Station: a card (FIFA/PES) is its own competition. Add a single (one
+// player) or multi (two players) entry to a card; this clears that card's
+// generated fixtures so they can be regenerated cleanly.
+async function assertCard(gameId, cardId) {
+  const { rows } = await pool.query("SELECT id FROM game_cards WHERE id = $1 AND game_id = $2", [cardId, gameId]);
+  return rows.length > 0;
+}
+
+router.post("/:id/cards/:cardId/entries", requireRole("full"), async (req, res, next) => {
   try {
+    if (!(await assertCard(req.params.id, req.params.cardId)))
+      return res.status(404).json({ error: "Card not found." });
     const playerIds = (req.body?.playerIds || []).filter(Boolean);
     if (playerIds.length < 1 || playerIds.length > 2) {
       return res.status(400).json({ error: "An entry needs one or two players." });
@@ -949,26 +987,51 @@ router.post("/:id/entries", requireRole("full"), async (req, res, next) => {
     }
     const { rows: users } = await pool.query("SELECT id FROM users WHERE id = ANY($1)", [playerIds]);
     if (users.length !== playerIds.length) return res.status(404).json({ error: "Member not found." });
-    await pool.query("INSERT INTO game_pairs (id, game_id, player1_id, player2_id) VALUES ($1, $2, $3, $4)", [
-      randomUUID(),
-      req.params.id,
-      playerIds[0],
-      playerIds[1] || null,
-    ]);
-    await pool.query("DELETE FROM matches WHERE game_id = $1", [req.params.id]);
-    await pool.query("UPDATE games SET fixtures_ready = false WHERE id = $1", [req.params.id]);
-    res.status(201).json({ entries: await stationEntries(req.params.id) });
+    await pool.query(
+      "INSERT INTO game_pairs (id, game_id, card_id, player1_id, player2_id) VALUES ($1, $2, $3, $4, $5)",
+      [randomUUID(), req.params.id, req.params.cardId, playerIds[0], playerIds[1] || null]
+    );
+    await pool.query("DELETE FROM matches WHERE game_id = $1 AND card_id = $2", [req.params.id, req.params.cardId]);
+    await pool.query("UPDATE game_cards SET fixtures_ready = false WHERE id = $1", [req.params.cardId]);
+    res.status(201).json({ cards: await stationCards(req.params.id) });
   } catch (err) {
     next(err);
   }
 });
 
-router.delete("/:id/entries/:pairId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/cards/:cardId/entries/:pairId", requireRole("full"), async (req, res, next) => {
   try {
-    await pool.query("DELETE FROM game_pairs WHERE game_id = $1 AND id = $2", [req.params.id, req.params.pairId]);
-    await pool.query("DELETE FROM matches WHERE game_id = $1", [req.params.id]);
-    await pool.query("UPDATE games SET fixtures_ready = false WHERE id = $1", [req.params.id]);
-    res.json({ entries: await stationEntries(req.params.id) });
+    await pool.query("DELETE FROM game_pairs WHERE game_id = $1 AND card_id = $2 AND id = $3", [
+      req.params.id,
+      req.params.cardId,
+      req.params.pairId,
+    ]);
+    await pool.query("DELETE FROM matches WHERE game_id = $1 AND card_id = $2", [req.params.id, req.params.cardId]);
+    await pool.query("UPDATE game_cards SET fixtures_ready = false WHERE id = $1", [req.params.cardId]);
+    res.json({ cards: await stationCards(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Generate a Play Station card's League or Cup over its own entries.
+router.post("/:id/cards/:cardId/generate", requireRole("full"), async (req, res, next) => {
+  try {
+    if (!(await assertCard(req.params.id, req.params.cardId)))
+      return res.status(404).json({ error: "Card not found." });
+    const { format } = req.body || {};
+    if (format !== "league" && format !== "cup") return res.status(400).json({ error: "Choose League or Cup." });
+    const { rows: cnt } = await pool.query(
+      "SELECT COUNT(*)::int AS n FROM game_pairs WHERE game_id = $1 AND card_id = $2",
+      [req.params.id, req.params.cardId]
+    );
+    if (cnt[0].n < 2) return res.status(400).json({ error: "Add at least two entries first." });
+    await generateStationFixtures(req.params.id, format, req.params.cardId);
+    await pool.query("UPDATE game_cards SET format = $1, fixtures_ready = true WHERE id = $2", [
+      format,
+      req.params.cardId,
+    ]);
+    res.json({ cards: await stationCards(req.params.id) });
   } catch (err) {
     next(err);
   }
@@ -1164,25 +1227,7 @@ router.post("/:id/generate", requireRole("full"), async (req, res, next) => {
       return res.json({ game });
     }
 
-    if (type === "station") {
-      const { rows: cnt } = await pool.query("SELECT COUNT(*)::int AS n FROM game_pairs WHERE game_id = $1", [
-        req.params.id,
-      ]);
-      if (cnt[0].n < 2) return res.status(400).json({ error: "Add at least two entries first." });
-      await generateStationFixtures(req.params.id, format);
-      const { rows } = await pool.query(
-        "UPDATE games SET format = $1, fixtures_ready = true WHERE id = $2 RETURNING *",
-        [format, req.params.id]
-      );
-      const game = toGame(rows[0]);
-      game.cards = await cardsView(game.id);
-      game.entries = await stationEntries(game.id);
-      const { matches, standings } = await playerCompetitionView(game.id, game.format);
-      game.matches = matches;
-      game.standings = standings;
-      return res.json({ game });
-    }
-
+    // Play Station generates per card via POST /:id/cards/:cardId/generate.
     if (type !== "roster") return res.status(400).json({ error: "This game has no fixtures." });
     const { rows: teamRows } = await pool.query("SELECT COUNT(*)::int AS n FROM game_teams WHERE game_id = $1", [
       req.params.id,
@@ -1257,6 +1302,35 @@ router.put("/:id/matches/:matchId", requireRole("full"), async (req, res, next) 
     const game = gameRows[0];
 
     if (game.type === "roster") return await saveRosterResult(req, res, game);
+
+    if (game.type === "station") {
+      const { winnerSide } = req.body || {};
+      const { rows: mRows } = await pool.query(
+        "SELECT pair_a_id, pair_b_id, card_id FROM matches WHERE id = $1 AND game_id = $2",
+        [req.params.matchId, req.params.id]
+      );
+      if (!mRows[0]) return res.status(404).json({ error: "Match not found." });
+      const cardId = mRows[0].card_id;
+      if (winnerSide === null) {
+        await pool.query("UPDATE matches SET status = 'scheduled', winner_side = NULL WHERE id = $1 AND game_id = $2", [
+          req.params.matchId,
+          req.params.id,
+        ]);
+      } else {
+        if (winnerSide !== "a" && winnerSide !== "b") return res.status(400).json({ error: "A valid winner is required." });
+        if (!mRows[0].pair_a_id || !mRows[0].pair_b_id) {
+          return res.status(400).json({ error: "Both sides are needed first." });
+        }
+        await pool.query("UPDATE matches SET status = 'done', winner_side = $1 WHERE id = $2 AND game_id = $3", [
+          winnerSide,
+          req.params.matchId,
+          req.params.id,
+        ]);
+      }
+      const { rows: cardRows } = await pool.query("SELECT format FROM game_cards WHERE id = $1", [cardId]);
+      if (cardRows[0]?.format === "cup") await recomputePlayerBracket(req.params.id, cardId);
+      return res.json({ cards: await stationCards(req.params.id) });
+    }
 
     if (game.type === "players") {
       const { winnerSide } = req.body || {};

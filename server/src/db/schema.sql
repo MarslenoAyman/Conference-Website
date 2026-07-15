@@ -96,6 +96,10 @@ CREATE TABLE IF NOT EXISTS game_cards (
   sort INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Play Station cards (FIFA / PES) each run their own competition, so a card
+-- carries its own League/Cup format and generated-state.
+ALTER TABLE game_cards ADD COLUMN IF NOT EXISTS format TEXT NOT NULL DEFAULT 'league';
+ALTER TABLE game_cards ADD COLUMN IF NOT EXISTS fixtures_ready BOOLEAN NOT NULL DEFAULT false;
 
 -- Royal Rumble: individual served members chosen (from their teams) into the
 -- ring, and their elimination state. A member who is eliminated can only return
@@ -196,6 +200,10 @@ CREATE TABLE IF NOT EXISTS game_pairs (
 );
 -- Ordering for manually-built entries (Play Station); harmless for auto pairs.
 ALTER TABLE game_pairs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+-- Play Station sub-competitions: an entry/match belongs to a specific card
+-- (FIFA or PES). NULL for every other game type (one competition per game).
+ALTER TABLE game_pairs ADD COLUMN IF NOT EXISTS card_id TEXT REFERENCES game_cards(id) ON DELETE CASCADE;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS card_id TEXT REFERENCES game_cards(id) ON DELETE CASCADE;
 
 -- Match competitor slots for player games (reference game_pairs; nullable for
 -- cup bracket TBD slots).

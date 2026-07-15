@@ -623,6 +623,25 @@ button {
 .card-art-swatch .card-face {
   filter: none;
 }
+/* Play Station cards are clickable — reset the button chrome and add affordance. */
+.station-card {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.station-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--olive);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+.station-card-meta {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.modal-card--wide {
+  max-width: 760px;
+}
 .rumble-teams-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

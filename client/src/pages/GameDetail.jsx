@@ -139,36 +139,20 @@ export default function GameDetail() {
     }
   }
 
-  async function addEntry(playerIds) {
+  // Play Station: each card (FIFA/PES) is its own competition. All these calls
+  // return the full { cards } array, which we drop straight into game state.
+  async function stationAction(fn) {
     try {
-      const { entries } = await api.addGameEntry(token, id, playerIds);
-      setGame((prev) => ({
-        ...prev,
-        entries,
-        entryCount: entries.length,
-        fixturesReady: false,
-        matches: [],
-        standings: prev.format === "league" ? [] : null,
-      }));
+      const { cards } = await fn();
+      setGame((prev) => ({ ...prev, cards }));
     } catch (err) {
       setError(tError(err.message));
     }
   }
-  async function removeEntry(pairId) {
-    try {
-      const { entries } = await api.removeGameEntry(token, id, pairId);
-      setGame((prev) => ({
-        ...prev,
-        entries,
-        entryCount: entries.length,
-        fixturesReady: false,
-        matches: [],
-        standings: prev.format === "league" ? [] : null,
-      }));
-    } catch (err) {
-      setError(tError(err.message));
-    }
-  }
+  const addCardEntry = (cardId, playerIds) => stationAction(() => api.addStationEntry(token, id, cardId, playerIds));
+  const removeCardEntry = (cardId, pairId) => stationAction(() => api.removeStationEntry(token, id, cardId, pairId));
+  const generateCard = (cardId, format) => stationAction(() => api.generateStationCard(token, id, cardId, format));
+  const setCardWinner = (matchId, winnerSide) => stationAction(() => api.setMatchWinner(token, id, matchId, winnerSide));
 
   async function addCard(card) {
     try {
@@ -397,16 +381,13 @@ export default function GameDetail() {
         <RumbleView game={game} canEdit={canEdit} token={token} reload={reloadGame} onError={setError} t={t} />
       ) : game.type === "station" ? (
         <StationView
-          game={game}
+          cards={game.cards || []}
           canEdit={canEdit}
           allUsers={allUsers}
-          chosenFormat={chosenFormat}
-          setChosenFormat={setChosenFormat}
-          onAddEntry={addEntry}
-          onRemoveEntry={removeEntry}
-          onGenerate={generateFixtures}
-          onSetWinner={setMatchWinner}
-          cupChampion={cupChampion}
+          onAddEntry={addCardEntry}
+          onRemoveEntry={removeCardEntry}
+          onGenerate={generateCard}
+          onSetWinner={setCardWinner}
           t={t}
         />
       ) : game.type === "roster" ? (
@@ -1156,46 +1137,79 @@ function SurvivalView({ game, canEdit, allUsers, onAdd, onRemove, onSetEliminate
   );
 }
 
-function StationView({
-  game,
-  canEdit,
-  allUsers,
-  chosenFormat,
-  setChosenFormat,
-  onAddEntry,
-  onRemoveEntry,
-  onGenerate,
-  onSetWinner,
-  cupChampion,
-  t,
-}) {
-  const [showAddEntry, setShowAddEntry] = useState(false);
-  const [confirmId, setConfirmId] = useState(null);
-  const entries = game.entries || [];
-  const cards = game.cards || [];
+// Play Station: FIFA and PES each are their own competition. The cards are
+// clickable; clicking one opens that card's competition (entries + league/cup).
+function StationView({ cards, canEdit, allUsers, onAddEntry, onRemoveEntry, onGenerate, onSetWinner, t }) {
+  const [openId, setOpenId] = useState(null);
+  const openCard = cards.find((c) => c.id === openId) || null;
 
   return (
     <>
-      {cards.length > 0 && (
-        <div className="card-showcase-grid" style={{ marginBottom: "var(--space-lg)" }}>
+      {cards.length === 0 ? (
+        <p className="empty-note">{t("gameDetail.noCardsYet")}</p>
+      ) : (
+        <div className="card-showcase-grid">
           {cards.map((c) => (
-            <div className="showcase-card" key={c.id}>
+            <button className="showcase-card station-card" key={c.id} onClick={() => setOpenId(c.id)}>
               <div className="showcase-card-art">{CARD_ART[c.art] || CARD_ART.card}</div>
               <h3 className="showcase-card-title">{c.title}</h3>
-              {c.subtitle && <p className="showcase-card-sub">{c.subtitle}</p>}
-            </div>
+              <span className="station-card-meta">
+                {c.fixturesReady
+                  ? `${c.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")} · ${c.entryCount}`
+                  : c.entryCount
+                  ? `${c.entryCount} ${t("gameDetail.entries")}`
+                  : t("gameDetail.tapToSetUp")}
+              </span>
+              <span className="open-link">{t("gameDetail.openCard")}</span>
+            </button>
           ))}
         </div>
       )}
 
-      <div className="players-section">
+      {openCard && (
+        <StationCardModal
+          card={openCard}
+          canEdit={canEdit}
+          allUsers={allUsers}
+          onAddEntry={(playerIds) => onAddEntry(openCard.id, playerIds)}
+          onRemoveEntry={(pairId) => onRemoveEntry(openCard.id, pairId)}
+          onGenerate={(format) => onGenerate(openCard.id, format)}
+          onSetWinner={onSetWinner}
+          onClose={() => setOpenId(null)}
+          t={t}
+        />
+      )}
+    </>
+  );
+}
+
+function StationCardModal({ card, canEdit, allUsers, onAddEntry, onRemoveEntry, onGenerate, onSetWinner, onClose, t }) {
+  const [showAddEntry, setShowAddEntry] = useState(false);
+  const [chosenFormat, setChosenFormat] = useState(card.format || "league");
+  const [confirmId, setConfirmId] = useState(null);
+  const entries = card.entries || [];
+  const matches = card.matches || [];
+
+  let champion = null;
+  if (card.format === "cup" && card.fixturesReady && matches.length) {
+    const maxRound = Math.max(...matches.map((m) => m.round));
+    const final = matches.find((m) => m.round === maxRound);
+    if (final && final.status === "done" && final.winnerSide) {
+      const side = final.winnerSide === "a" ? final.sideA : final.sideB;
+      champion = side.length ? side.map((p) => p.name).join(" & ") : null;
+    }
+  }
+
+  return (
+    <Modal title={card.title} onClose={onClose} wide>
+      <div className="players-section" style={{ marginTop: 0 }}>
         <div className="competition-head">
           <h2 className="competition-title">{t("gameDetail.entries")}</h2>
-          <div className="competition-stats">
+          <span className="competition-stats">
             <span>
               {t("gameDetail.entriesCount")}: <strong>{entries.length}</strong>
             </span>
-          </div>
+          </span>
         </div>
         <div className="card">
           {entries.length === 0 ? (
@@ -1225,17 +1239,17 @@ function StationView({
         </div>
       </div>
 
-      <div className="section-gap">
+      <div className="section-gap" style={{ marginTop: "var(--space-lg)" }}>
         <div className="competition-head">
           <h2 className="competition-title">{t("gameDetail.competition")}</h2>
-          <div className="competition-stats">
-            {game.fixturesReady && (
+          {card.fixturesReady && (
+            <span className="competition-stats">
               <span>
                 {t("gameDetail.system")}:{" "}
-                <strong>{game.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
+                <strong>{card.format === "cup" ? t("gameDetail.cup") : t("gameDetail.league")}</strong>
               </span>
-            )}
-          </div>
+            </span>
+          )}
         </div>
 
         {canEdit && entries.length >= 2 && (
@@ -1248,8 +1262,8 @@ function StationView({
                 {t("gameDetail.cup")}
               </button>
             </div>
-            <button className="btn btn-primary btn-sm" onClick={onGenerate}>
-              {game.fixturesReady
+            <button className="btn btn-primary btn-sm" onClick={() => onGenerate(chosenFormat)}>
+              {card.fixturesReady
                 ? t("gameDetail.regenerate")
                 : chosenFormat === "cup"
                 ? t("gameDetail.generateCup")
@@ -1260,17 +1274,17 @@ function StationView({
 
         {entries.length < 2 ? (
           <p className="empty-note">{t("gameDetail.needTwoEntries")}</p>
-        ) : !game.fixturesReady ? (
+        ) : !card.fixturesReady ? (
           <p className="empty-note">{t("gameDetail.notGeneratedYet")}</p>
-        ) : game.format === "cup" ? (
+        ) : card.format === "cup" ? (
           <>
-            {cupChampion && (
+            {champion && (
               <div className="champion-banner">
-                🏆 {t("gameDetail.champion")}: <strong>{cupChampion}</strong>
+                🏆 {t("gameDetail.champion")}: <strong>{champion}</strong>
               </div>
             )}
             <BracketView
-              matches={game.matches}
+              matches={matches}
               t={t}
               renderMatch={(m) => (
                 <MatchCard
@@ -1287,9 +1301,9 @@ function StationView({
           </>
         ) : (
           <>
-            <PlayerStandings standings={game.standings} t={t} />
+            <PlayerStandings standings={card.standings} t={t} />
             <div style={{ marginTop: 20 }}>
-              {game.matches.map((m) => (
+              {matches.map((m) => (
                 <MatchCard
                   key={m.id}
                   match={m}
@@ -1320,7 +1334,7 @@ function StationView({
           onCancel={() => setConfirmId(null)}
         />
       )}
-    </>
+    </Modal>
   );
 }
 
