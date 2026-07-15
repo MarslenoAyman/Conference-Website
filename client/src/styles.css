@@ -558,6 +558,72 @@ button {
   width: 28px;
   height: 28px;
 }
+.card-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-md);
+}
+.showcase-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.showcase-card-art {
+  width: 120px;
+  max-width: 70%;
+}
+.card-face {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12));
+}
+.card-face-bg {
+  fill: var(--card-alt);
+}
+.card-face-border {
+  stroke: var(--border);
+  stroke-width: 2;
+}
+.card-face-pip {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: var(--font-main);
+}
+.showcase-card-title {
+  margin: 4px 0 0;
+  font-size: 1.15rem;
+}
+.showcase-card-sub {
+  margin: 0 0 6px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.card-art-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.card-art-swatch {
+  width: 54px;
+  padding: 4px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  cursor: pointer;
+}
+.card-art-swatch.selected {
+  border-color: var(--olive);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--olive) 30%, transparent);
+}
+.card-art-swatch .card-face {
+  filter: none;
+}
 .not-participant-card {
   margin-top: var(--space-lg);
   display: flex;

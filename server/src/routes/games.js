@@ -23,6 +23,14 @@ function toGame(row) {
   };
 }
 
+async function cardsView(gameId) {
+  const { rows } = await pool.query(
+    "SELECT id, title, subtitle, art FROM game_cards WHERE game_id = $1 ORDER BY sort, created_at",
+    [gameId]
+  );
+  return rows.map((c) => ({ id: c.id, title: c.title, subtitle: c.subtitle, art: c.art }));
+}
+
 async function rosterView(gameId) {
   const { rows: teams } = await pool.query("SELECT * FROM game_teams WHERE game_id = $1 ORDER BY name", [gameId]);
   const { rows: rosterRows } = await pool.query(
@@ -562,6 +570,11 @@ router.get("/:id", async (req, res, next) => {
       if (!participant) return res.json({ game });
     }
 
+    if (game.type === "showcase") {
+      game.cards = await cardsView(game.id);
+      return res.json({ game });
+    }
+
     if (game.type === "roster") {
       const rosters = await rosterView(game.id);
       game.rosters = rosters;
@@ -769,6 +782,34 @@ router.delete("/:id/players/:userId", requireRole("full"), async (req, res, next
     await pool.query("DELETE FROM game_players WHERE game_id = $1 AND user_id = $2", [req.params.id, req.params.userId]);
     await resetPlayerFixtures(req.params.id);
     res.json({ players: await playerPool(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Showcase cards (e.g. the Card Game's Screw / Cochina tiles).
+router.post("/:id/cards", requireRole("full"), async (req, res, next) => {
+  try {
+    const { title, subtitle, art } = req.body || {};
+    if (!title || !title.trim()) return res.status(400).json({ error: "A card title is required." });
+    const { rows: max } = await pool.query(
+      "SELECT COALESCE(MAX(sort), -1) + 1 AS next FROM game_cards WHERE game_id = $1",
+      [req.params.id]
+    );
+    await pool.query(
+      "INSERT INTO game_cards (id, game_id, title, subtitle, art, sort) VALUES ($1, $2, $3, $4, $5, $6)",
+      [randomUUID(), req.params.id, title.trim(), (subtitle || "").trim(), (art || "card").trim(), max[0].next]
+    );
+    res.status(201).json({ cards: await cardsView(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/:id/cards/:cardId", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM game_cards WHERE game_id = $1 AND id = $2", [req.params.id, req.params.cardId]);
+    res.json({ cards: await cardsView(req.params.id) });
   } catch (err) {
     next(err);
   }

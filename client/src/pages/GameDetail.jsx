@@ -4,7 +4,9 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
 import { GAME_ICONS, GAME_ICON_COLORS } from "../gameIcons.jsx";
+import { CARD_ART, CARD_ART_KEYS } from "../cardArt.jsx";
 import Modal from "../components/Modal.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import Alert from "../components/Alert.jsx";
 
 const PALETTE = [
@@ -91,6 +93,23 @@ export default function GameDetail() {
         matches: [],
         standings: prev.format === "league" ? [] : null,
       }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
+  async function addCard(card) {
+    try {
+      const { cards } = await api.addGameCard(token, id, card);
+      setGame((prev) => ({ ...prev, cards }));
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+  async function removeCard(cardId) {
+    try {
+      const { cards } = await api.removeGameCard(token, id, cardId);
+      setGame((prev) => ({ ...prev, cards }));
     } catch (err) {
       setError(tError(err.message));
     }
@@ -289,7 +308,9 @@ export default function GameDetail() {
 
       <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 
-      {game.type === "roster" ? (
+      {game.type === "showcase" ? (
+        <ShowcaseView cards={game.cards || []} canEdit={canEdit} onAdd={addCard} onRemove={removeCard} t={t} />
+      ) : game.type === "roster" ? (
         <>
           <div className="grid-teams roster-grid">
             {game.rosters.length === 0 ? (
@@ -686,6 +707,109 @@ export default function GameDetail() {
           poolIds={new Set((game.players || []).map((p) => p.id))}
           onAdd={addPlayer}
           onClose={() => setShowAddPlayer(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ShowcaseView({ cards, canEdit, onAdd, onRemove, t }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [title, setTitle] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [art, setArt] = useState(CARD_ART_KEYS[0]);
+  const [confirmId, setConfirmId] = useState(null);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    await onAdd({ title: title.trim(), subtitle: subtitle.trim(), art });
+    setTitle("");
+    setSubtitle("");
+    setArt(CARD_ART_KEYS[0]);
+    setShowAdd(false);
+  }
+
+  return (
+    <div className="section-gap">
+      {cards.length === 0 ? (
+        <p className="empty-note">{t("gameDetail.noCardsYet")}</p>
+      ) : (
+        <div className="card-showcase-grid">
+          {cards.map((c) => (
+            <div className="showcase-card" key={c.id}>
+              <div className="showcase-card-art">{CARD_ART[c.art] || CARD_ART.card}</div>
+              <h3 className="showcase-card-title">{c.title}</h3>
+              {c.subtitle && <p className="showcase-card-sub">{c.subtitle}</p>}
+              {canEdit && (
+                <button className="btn btn-sm btn-danger" onClick={() => setConfirmId(c.id)}>
+                  {t("common.delete")}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canEdit &&
+        (showAdd ? (
+          <form className="add-box card" onSubmit={submit} style={{ marginTop: 20 }}>
+            <div className="modal-section-title" style={{ marginTop: 0 }}>
+              {t("gameDetail.addCard")}
+            </div>
+            <div className="field">
+              <label>{t("gameDetail.cardTitle")}</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("gameDetail.cardTitle")} />
+            </div>
+            <div className="field">
+              <label>{t("gameDetail.cardSubtitle")}</label>
+              <input
+                value={subtitle}
+                onChange={(e) => setSubtitle(e.target.value)}
+                placeholder={t("gameDetail.cardSubtitle")}
+              />
+            </div>
+            <div className="field">
+              <label>{t("gameDetail.cardArt")}</label>
+              <div className="card-art-picker">
+                {CARD_ART_KEYS.map((key) => (
+                  <button
+                    type="button"
+                    key={key}
+                    className={"card-art-swatch" + (art === key ? " selected" : "")}
+                    onClick={() => setArt(key)}
+                    title={key}
+                  >
+                    {CARD_ART[key]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="card-actions">
+              <button className="btn btn-primary btn-sm" type="submit">
+                {t("common.save")}
+              </button>
+              <button className="btn btn-sm" type="button" onClick={() => setShowAdd(false)}>
+                {t("common.cancel")}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setShowAdd(true)}>
+            + {t("gameDetail.addCard")}
+          </button>
+        ))}
+
+      {confirmId && (
+        <ConfirmModal
+          message={t("common.confirmDeleteGeneric")}
+          danger
+          confirmLabel={t("common.delete")}
+          onConfirm={() => {
+            onRemove(confirmId);
+            setConfirmId(null);
+          }}
+          onCancel={() => setConfirmId(null)}
         />
       )}
     </div>

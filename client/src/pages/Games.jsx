@@ -105,6 +105,7 @@ export default function Games() {
                     <option value="players">{t("games.typePlayers")}</option>
                     <option value="duel">{t("games.typeDuel")}</option>
                     <option value="matchup">{t("games.typeMatchup")}</option>
+                    <option value="showcase">{t("games.typeShowcase")}</option>
                   </select>
                 </div>
                 <div className="field">
@@ -187,6 +188,7 @@ export default function Games() {
                       <option value="players">{t("games.typePlayers")}</option>
                       <option value="duel">{t("games.typeDuel")}</option>
                       <option value="matchup">{t("games.typeMatchup")}</option>
+                      <option value="showcase">{t("games.typeShowcase")}</option>
                     </select>
                     <select value={editDraft.icon} onChange={(e) => setEditDraft({ ...editDraft, icon: e.target.value })}>
                       {GAME_ICON_KEYS.map((key) => (

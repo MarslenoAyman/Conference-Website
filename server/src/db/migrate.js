@@ -93,7 +93,16 @@ const GAMES = [
   ["تنس الطاولة", "pingpong", "players", "league", 1, "Mr Soliman Hefzy", false],
   ["الدومينو", "domino", "players", "league", 1, "Fr Philopater Girgis & Mr Adry", false],
   ["الطاولة", "tawla", "players", "league", 1, "Fr Philopater Girgis", true],
+  ["الكوتشينة", "cards", "showcase", "league", 1, "Mr Andrew Amir", false],
 ];
+
+// Showcase cards seeded for a game (matched to the game by its icon key).
+const SHOWCASE_CARDS = {
+  cards: [
+    ["اسكرو", "Screw", "screw"],
+    ["كوتشينة", "Cochina", "cochina"],
+  ],
+};
 
 const TEAMS = [
   ["فريق مار مرقس", "#b5433d"],
@@ -163,9 +172,20 @@ async function seedIfEmpty() {
   }
 
   for (const [name, icon, type, format, teamSize, manager, singlesOnly] of GAMES) {
+    const gameId = randomUUID();
     await pool.query(
-      "INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      [randomUUID(), name, icon, type, format, teamSize, manager, singlesOnly]
+      "INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only, all_served_view) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+      [gameId, name, icon, type, format, teamSize, manager, singlesOnly, type === "showcase"]
     );
+    const cards = SHOWCASE_CARDS[icon];
+    if (cards) {
+      let sort = 0;
+      for (const [cardTitle, cardSub, art] of cards) {
+        await pool.query(
+          "INSERT INTO game_cards (id, game_id, title, subtitle, art, sort) VALUES ($1, $2, $3, $4, $5, $6)",
+          [randomUUID(), gameId, cardTitle, cardSub, art, sort++]
+        );
+      }
+    }
   }
 }
