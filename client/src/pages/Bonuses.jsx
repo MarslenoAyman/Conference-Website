@@ -9,6 +9,7 @@ export default function Bonuses() {
   const { t, tError, lang } = useLanguage();
   const [members, setMembers] = useState([]);
   const [history, setHistory] = useState([]);
+  const [myBonus, setMyBonus] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reasons, setReasons] = useState({});
@@ -16,8 +17,20 @@ export default function Bonuses() {
   const [signs, setSigns] = useState({});
 
   const canEdit = user.role === "full";
+  const isServed = user.role === "none";
 
   function load() {
+    if (isServed) {
+      api
+        .getMyBonus(token)
+        .then((d) => {
+          setMyBonus(d.bonus);
+          setHistory(d.history);
+        })
+        .catch((err) => setError(tError(err.message)))
+        .finally(() => setLoading(false));
+      return;
+    }
     Promise.all([api.getBonusMembers(token), api.getBonusHistory(token)])
       .then(([membersRes, historyRes]) => {
         setMembers(membersRes.members);
@@ -77,6 +90,57 @@ export default function Bonuses() {
     } catch {
       return iso;
     }
+  }
+
+  if (isServed) {
+    return (
+      <div className="page">
+        <div className="bonus-header">
+          <h1 className="page-title" style={{ fontSize: "2rem", marginBottom: 0 }}>
+            {t("bonuses.title")} <em>{t("bonuses.titleEm")}</em>
+          </h1>
+        </div>
+
+        <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
+
+        {loading ? (
+          <p className="center-note">{t("common.loading")}</p>
+        ) : (
+          <>
+            <div className="card section-gap my-bonus-card">
+              <span className="my-bonus-label">{t("bonuses.yourPoints")}</span>
+              <span className="my-bonus-total">{myBonus}</span>
+            </div>
+
+            <div className="card section-gap">
+              <div className="modal-section-title" style={{ margin: "0 0 10px" }}>
+                {t("bonuses.historyTitle")}
+              </div>
+              {history.length === 0 ? (
+                <p className="empty-note">{t("bonuses.noPointsYet")}</p>
+              ) : (
+                history.map((h) => (
+                  <div className="bonus-history-row" key={h.id}>
+                    <div>
+                      <span className={"bonus-history-delta" + (h.delta < 0 ? " negative" : "")}>
+                        {h.delta > 0 ? `+${h.delta}` : h.delta}
+                      </span>
+                      {h.reason && <span className="bonus-history-reason">— {h.reason}</span>}
+                      {h.actorName && (
+                        <span className="bonus-history-actor">
+                          {t("bonuses.byActor")} {h.actorName}
+                        </span>
+                      )}
+                    </div>
+                    <span className="bonus-history-date">{formatDate(h.createdAt)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
   }
 
   return (

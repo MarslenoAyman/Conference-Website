@@ -16,7 +16,7 @@ export default function Navbar() {
     { to: "/topics", label: t("nav.topics"), show: true },
     { to: "/games", label: t("nav.games"), show: true },
     { to: "/teams", label: t("nav.teams"), show: true },
-    { to: "/bonuses", label: t("nav.bonuses"), show: user.role === "full" },
+    { to: "/bonuses", label: t("nav.bonuses"), show: true },
     { to: "/settings", label: t("nav.settings"), show: true },
   ];
 

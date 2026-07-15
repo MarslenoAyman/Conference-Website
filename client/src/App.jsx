@@ -20,18 +20,6 @@ function Protected({ children }) {
   return children;
 }
 
-function FullOnly({ children }) {
-  const { user } = useAuth();
-  if (user?.role !== "full") return <Navigate to="/" replace />;
-  return children;
-}
-
-function StaffOnly({ children }) {
-  const { user } = useAuth();
-  if (user?.role !== "full" && user?.role !== "limited") return <Navigate to="/" replace />;
-  return children;
-}
-
 export default function App() {
   const { user, loading } = useAuth();
 
@@ -103,9 +91,7 @@ export default function App() {
           path="/bonuses"
           element={
             <Protected>
-              <StaffOnly>
-                <Bonuses />
-              </StaffOnly>
+              <Bonuses />
             </Protected>
           }
         />

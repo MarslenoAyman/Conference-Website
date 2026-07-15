@@ -77,6 +77,7 @@ export const api = {
 
   getBonusMembers: (token) => request("/bonus", { token }),
   getBonusHistory: (token) => request("/bonus/history", { token }),
+  getMyBonus: (token) => request("/bonus/me", { token }),
   adjustBonus: (token, userId, delta, reason) =>
     request(`/bonus/${userId}`, { method: "POST", body: { delta, reason }, token }),
   deleteBonusMember: (token, userId) => request(`/bonus/${userId}`, { method: "DELETE", token }),

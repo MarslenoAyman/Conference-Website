@@ -1451,6 +1451,25 @@ button {
   gap: 10px;
   margin-bottom: 4px;
 }
+.my-bonus-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.my-bonus-label {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.my-bonus-total {
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 2.5rem;
+  color: var(--olive-dark);
+  line-height: 1;
+}
 .bonus-delete-btn {
   border: 1px solid var(--border);
   background: var(--card);

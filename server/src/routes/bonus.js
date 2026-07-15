@@ -4,9 +4,40 @@ import { pool } from "../db/pool.js";
 import { authenticate, requireRole } from "../auth.js";
 
 const router = Router();
-router.use(authenticate, requireRole("full", "limited"));
+router.use(authenticate);
 
-router.get("/", async (req, res, next) => {
+// A served member's own bonus view: their point total plus the history of
+// changes to their own points (who gave them, why, and when). Any signed-in
+// user can read this, but only ever for themselves.
+router.get("/me", async (req, res, next) => {
+  try {
+    const { rows: userRows } = await pool.query("SELECT bonus FROM users WHERE id = $1", [req.user.id]);
+    if (!userRows[0]) return res.status(404).json({ error: "Not found." });
+    const { rows } = await pool.query(
+      `SELECT bl.id, bl.delta, bl.reason, bl.created_at, actor.name AS actor_name
+       FROM bonus_log bl
+       LEFT JOIN users actor ON actor.id = bl.actor_id
+       WHERE bl.user_id = $1
+       ORDER BY bl.created_at DESC
+       LIMIT 200`,
+      [req.user.id]
+    );
+    res.json({
+      bonus: userRows[0].bonus,
+      history: rows.map((r) => ({
+        id: r.id,
+        delta: r.delta,
+        reason: r.reason,
+        createdAt: r.created_at,
+        actorName: r.actor_name,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/", requireRole("full", "limited"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.name, u.phone, u.bonus, t.name AS team_name
@@ -23,7 +54,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.get("/history", async (req, res, next) => {
+router.get("/history", requireRole("full", "limited"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT bl.id, bl.delta, bl.reason, bl.created_at, u.id AS user_id, u.name AS user_name,

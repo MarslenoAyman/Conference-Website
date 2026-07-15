@@ -239,6 +239,8 @@ export const translations = {
       byActor: "بواسطة",
       deleteMember: "حذف الحساب",
       deleteConfirm: "هل تريد حذف هذا المخدوم وكل بياناته نهائيًا من قاعدة البيانات؟ لا يمكن التراجع عن هذا.",
+      yourPoints: "نقاطك",
+      noPointsYet: "لم تحصل على نقاط بعد.",
     },
     settings: {
       title: "الإعدادات",
@@ -506,6 +508,8 @@ export const translations = {
       byActor: "by",
       deleteMember: "Delete account",
       deleteConfirm: "Delete this served member and all their data permanently from the database? This cannot be undone.",
+      yourPoints: "Your points",
+      noPointsYet: "You haven't received any points yet.",
     },
     settings: {
       title: "Settings",
