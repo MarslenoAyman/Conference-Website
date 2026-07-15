@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import { gameName } from "../i18n.js";
 import { api } from "../api.js";
 import { GAME_ICONS, GAME_ICON_BADGE_CLASS, GAME_ICON_KEYS } from "../gameIcons.jsx";
 import Alert from "../components/Alert.jsx";
@@ -230,7 +231,7 @@ export default function Games() {
                   <div className={"icon-badge " + (GAME_ICON_BADGE_CLASS[game.icon] || GAME_ICON_BADGE_CLASS.ball)}>
                     {GAME_ICONS[game.icon] || GAME_ICONS.ball}
                   </div>
-                  <h3>{game.name}</h3>
+                  <h3>{gameName(game, t)}</h3>
                   {game.manager && (
                     <p className="game-manager">
                       {t("games.responsible")}: <strong>{game.manager}</strong>

@@ -81,6 +81,9 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS fixtures_ready BOOLEAN NOT NULL DEFAU
 ALTER TABLE games ADD COLUMN IF NOT EXISTS all_served_view BOOLEAN NOT NULL DEFAULT false;
 -- When true, a players-type game offers singles only (no doubles/couple), e.g. Tawla.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS singles_only BOOLEAN NOT NULL DEFAULT false;
+-- Translation key for seeded games so their name follows the theme language;
+-- user-created games leave this null and show their literal name.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS name_key TEXT;
 
 -- Showcase cards for a "showcase" game (e.g. the Card Game: Screw, Cochina).
 -- Each card is a titled tile with a drawn art style and optional subtitle.

@@ -21,6 +21,7 @@ function toGame(row) {
     fixturesReady: row.fixtures_ready || false,
     allServedView: row.all_served_view || false,
     singlesOnly: row.singles_only || false,
+    nameKey: row.name_key || null,
   };
 }
 

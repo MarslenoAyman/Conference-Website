@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import { gameName } from "../i18n.js";
 import { api } from "../api.js";
 import { GAME_ICONS, GAME_ICON_COLORS } from "../gameIcons.jsx";
 import { CARD_ART, CARD_ART_KEYS } from "../cardArt.jsx";
@@ -312,7 +313,7 @@ export default function GameDetail() {
           </div>
           <div>
             <h1 className="page-title" style={{ fontSize: "2rem", marginBottom: 4 }}>
-              {game.name}
+              {gameName(game, t)}
             </h1>
             {game.description && (
               <p className="page-subtitle" style={{ margin: 0 }}>

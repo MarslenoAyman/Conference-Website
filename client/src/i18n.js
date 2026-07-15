@@ -186,6 +186,19 @@ export const translations = {
         squid: "لعبة الحبار",
         ball: "عام",
       },
+      gameName: {
+        football: "كرة القدم",
+        volleyball: "الكرة الطائرة",
+        chess: "الشطرنج",
+        billiard: "البلياردو",
+        pingpong: "تنس الطاولة",
+        domino: "الدومينو",
+        tawla: "الطاولة",
+        cards: "الكوتشينة",
+        playstation: "بلايستيشن",
+        squid: "لعبة الحبار",
+        rumble: "رويال رامبل",
+      },
     },
     gameDetail: {
       backToGames: "→ العودة إلى الألعاب",
@@ -555,6 +568,19 @@ export const translations = {
         squid: "Squid Game",
         ball: "Generic",
       },
+      gameName: {
+        football: "Football",
+        volleyball: "Volleyball",
+        chess: "Chess",
+        billiard: "Billiard",
+        pingpong: "Ping Pong",
+        domino: "Domino",
+        tawla: "Tawla",
+        cards: "Card Game",
+        playstation: "Play Station",
+        squid: "Squid Game",
+        rumble: "Royal Rumble",
+      },
     },
     gameDetail: {
       backToGames: "→ Back to Games",
@@ -741,6 +767,17 @@ export function getT(lang) {
     }
     return node ?? path;
   };
+}
+
+// Display name for a game: known (seeded) games translate per theme via their
+// nameKey; user-created games show the literal name they were given.
+export function gameName(game, t) {
+  if (game?.nameKey) {
+    const key = `games.gameName.${game.nameKey}`;
+    const translated = t(key);
+    if (translated && translated !== key) return translated;
+  }
+  return game?.name || "";
 }
 
 const DAY_NAMES_AR_TO_EN = {

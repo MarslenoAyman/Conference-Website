@@ -84,19 +84,19 @@ const TOPICS = [
   ["هل الله حسب المزاج؟", "لم يتحدد", "الله ثابت لا يتغير، وينظر إلى قلبك أكثر من إنجازاتك."],
 ];
 
-// name, icon, type, format, teamSize, manager, singlesOnly
+// name, icon, type, format, teamSize, manager, singlesOnly, nameKey
 const GAMES = [
-  ["كرة القدم", "football", "roster", "league", 1, "Mr Gazo", false],
-  ["الكرة الطائرة", "volleyball", "roster", "league", 1, "", false],
-  ["الشطرنج", "chess", "players", "league", 1, "Mr Weza", false],
-  ["البلياردو", "billiard", "players", "league", 1, "Mr Marsleno Ayman", false],
-  ["تنس الطاولة", "pingpong", "players", "league", 1, "Mr Soliman Hefzy", false],
-  ["الدومينو", "domino", "players", "league", 1, "Fr Philopater Girgis & Mr Adry", false],
-  ["الطاولة", "tawla", "players", "league", 1, "Fr Philopater Girgis", true],
-  ["الكوتشينة", "cards", "showcase", "league", 1, "Mr Andrew Amir", false],
-  ["بلايستيشن", "gamepad", "station", "league", 1, "Mr Andrew Samir", false],
-  ["لعبة الحبار", "squid", "survival", "league", 1, "Mr Marsleno Ayman & Mr Amir Ashraf", false],
-  ["رويال رامبل", "ring", "rumble", "league", 1, "Mr Marsleno Ayman & Mr Amir Ashraf", false],
+  ["كرة القدم", "football", "roster", "league", 1, "Mr Gazo", false, "football"],
+  ["الكرة الطائرة", "volleyball", "roster", "league", 1, "", false, "volleyball"],
+  ["الشطرنج", "chess", "players", "league", 1, "Mr Weza", false, "chess"],
+  ["البلياردو", "billiard", "players", "league", 1, "Mr Marsleno Ayman", false, "billiard"],
+  ["تنس الطاولة", "pingpong", "players", "league", 1, "Mr Soliman Hefzy", false, "pingpong"],
+  ["الدومينو", "domino", "players", "league", 1, "Fr Philopater Girgis & Mr Adry", false, "domino"],
+  ["الطاولة", "tawla", "players", "league", 1, "Fr Philopater Girgis", true, "tawla"],
+  ["الكوتشينة", "cards", "showcase", "league", 1, "Mr Andrew Amir", false, "cards"],
+  ["بلايستيشن", "gamepad", "station", "league", 1, "Mr Andrew Samir", false, "playstation"],
+  ["لعبة الحبار", "squid", "survival", "league", 1, "Mr Marsleno Ayman & Mr Amir Ashraf", false, "squid"],
+  ["رويال رامبل", "ring", "rumble", "league", 1, "Mr Marsleno Ayman & Mr Amir Ashraf", false, "rumble"],
 ];
 
 // Showcase cards seeded for a game (matched to the game by its icon key).
@@ -178,10 +178,10 @@ async function seedIfEmpty() {
     ]);
   }
 
-  for (const [name, icon, type, format, teamSize, manager, singlesOnly] of GAMES) {
+  for (const [name, icon, type, format, teamSize, manager, singlesOnly, nameKey] of GAMES) {
     const gameId = randomUUID();
     await pool.query(
-      "INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only, all_served_view) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+      "INSERT INTO games (id, name, icon, type, format, team_size, manager, singles_only, all_served_view, name_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
       [
         gameId,
         name,
@@ -192,6 +192,7 @@ async function seedIfEmpty() {
         manager,
         singlesOnly,
         type === "showcase" || type === "survival" || type === "rumble",
+        nameKey,
       ]
     );
     const cards = SHOWCASE_CARDS[icon];
