@@ -25,11 +25,10 @@ export default function RoomEditModal({ room, rooms, allUsers, onClose, onSaveDe
   const memberIds = useMemo(() => new Set(room.members.map((m) => m.id)), [room.members]);
 
   // Any account — served or servant (staff) — can be placed in a room.
+  // Search by name only (like the game rosters), never the (possibly null) phone.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return allUsers
-      .filter((u) => !memberIds.has(u.id))
-      .filter((u) => !q || u.name.toLowerCase().includes(q) || (u.phone || "").includes(q));
+    return allUsers.filter((u) => !memberIds.has(u.id)).filter((u) => !q || u.name.toLowerCase().includes(q));
   }, [allUsers, memberIds, query]);
 
   function saveDetails() {

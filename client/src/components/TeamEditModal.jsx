@@ -25,11 +25,11 @@ export default function TeamEditModal({ team, teams, allUsers, onClose, onSaveDe
   const teamNameById = useMemo(() => Object.fromEntries(teams.map((tm) => [tm.id, tm.name])), [teams]);
   const memberIds = useMemo(() => new Set(team.members.map((m) => m.id)), [team.members]);
 
+  // Search by name only (like the game rosters). A served member's phone can be
+  // null, so never call .includes on it.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return allUsers
-      .filter((u) => !memberIds.has(u.id))
-      .filter((u) => !q || u.name.toLowerCase().includes(q) || u.phone.includes(q));
+    return allUsers.filter((u) => !memberIds.has(u.id)).filter((u) => !q || u.name.toLowerCase().includes(q));
   }, [allUsers, memberIds, query]);
 
   function saveDetails() {
