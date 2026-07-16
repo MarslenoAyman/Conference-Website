@@ -392,6 +392,9 @@ export const translations = {
       deleteConfirm: "هل تريد حذف هذا المخدوم وكل بياناته نهائيًا من قاعدة البيانات؟ لا يمكن التراجع عن هذا.",
       yourPoints: "نقاطك",
       noPointsYet: "لم تحصل على نقاط بعد.",
+      editName: "تعديل الاسم",
+      clearHistory: "مسح السجل",
+      clearHistoryConfirm: "سيتم مسح كل سجل نقاط المكافأة. لن تتأثر النقاط الحالية. متابعة؟",
     },
     settings: {
       title: "الإعدادات",
@@ -812,6 +815,9 @@ export const translations = {
       deleteConfirm: "Delete this served member and all their data permanently from the database? This cannot be undone.",
       yourPoints: "Your points",
       noPointsYet: "You haven't received any points yet.",
+      editName: "Edit name",
+      clearHistory: "Clear history",
+      clearHistoryConfirm: "This clears the entire bonus history log. Current point totals are unaffected. Continue?",
     },
     settings: {
       title: "Settings",
@@ -857,7 +863,7 @@ export function isResponsible(manager, name) {
 }
 
 // Limited servants allow-listed to edit the Topics section (mirrors the server).
-export const TOPICS_EDITORS = ["Mr George Fathy", "Mr Ramy Oncy"];
+export const TOPICS_EDITORS = ["Mr George Fathy", "Mr Ramy Oncy", "Mr Andrew Amir"];
 export function canEditTopics(user) {
   if (!user) return false;
   if (user.role === "full") return true;

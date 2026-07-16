@@ -29,12 +29,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS room_id TEXT REFERENCES rooms(id) ON 
 ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
 UPDATE users SET password = phone WHERE password IS NULL AND phone IS NOT NULL;
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_password_key') THEN
-    ALTER TABLE users ADD CONSTRAINT users_password_key UNIQUE (password);
-  END IF;
-END $$;
+-- Login identity is `username`; `name` is a display name that can be edited
+-- (from the Bonus section) without changing how someone signs in. Existing rows
+-- backfill username from their current name.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+UPDATE users SET username = name WHERE username IS NULL;
+-- Login is by username + password, so passwords no longer need to be unique
+-- (two accounts may share a password). Drop the old password-uniqueness rule.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_password_key;
 
 CREATE TABLE IF NOT EXISTS instructions (
   id TEXT PRIMARY KEY,

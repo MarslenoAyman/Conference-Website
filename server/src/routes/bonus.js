@@ -81,6 +81,40 @@ router.get("/history", requireRole("full", "limited"), async (req, res, next) =>
   }
 });
 
+// Clear the whole bonus history log (full access). Point totals are unaffected.
+router.delete("/history", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM bonus_log");
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Rename a served member's display name (full access). Login username and
+// password are untouched — the person still signs in with what they chose.
+router.put("/:userId/name", requireRole("full"), async (req, res, next) => {
+  try {
+    const name = String((req.body || {}).name || "").trim();
+    if (!name) return res.status(400).json({ error: "A name is required." });
+    const { rows: target } = await pool.query("SELECT role FROM users WHERE id = $1", [req.params.userId]);
+    if (!target[0]) return res.status(404).json({ error: "Member not found." });
+    if (target[0].role !== "none") return res.status(403).json({ error: "Only served accounts can be renamed here." });
+    const { rows: clash } = await pool.query("SELECT 1 FROM users WHERE lower(name) = lower($1) AND id <> $2", [
+      name,
+      req.params.userId,
+    ]);
+    if (clash[0]) return res.status(409).json({ error: "That name is already used." });
+    const { rows } = await pool.query("UPDATE users SET name = $1 WHERE id = $2 RETURNING id, name", [
+      name,
+      req.params.userId,
+    ]);
+    res.json({ member: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/:userId", requireRole("full"), async (req, res, next) => {
   try {
     const { delta, reason } = req.body || {};

@@ -22,7 +22,9 @@ router.post("/login", async (req, res, next) => {
     if (!username || !username.trim() || !password || !password.trim()) {
       return res.status(400).json({ error: "Username and password are required." });
     }
-    const { rows } = await pool.query("SELECT * FROM users WHERE lower(name) = lower($1)", [username.trim()]);
+    const { rows } = await pool.query("SELECT * FROM users WHERE lower(COALESCE(username, name)) = lower($1)", [
+      username.trim(),
+    ]);
     const user = rows[0];
     if (!user || user.password !== password.trim()) {
       return res.status(401).json({ error: "Username or password is incorrect." });
@@ -45,7 +47,10 @@ router.post("/signup", async (req, res, next) => {
     if (cleanPassword.length < 4) {
       return res.status(400).json({ error: "Password must be at least 4 characters." });
     }
-    const existingName = await pool.query("SELECT id FROM users WHERE lower(name) = lower($1)", [cleanName]);
+    const existingName = await pool.query(
+      "SELECT id FROM users WHERE lower(COALESCE(username, name)) = lower($1) OR lower(name) = lower($1)",
+      [cleanName]
+    );
     if (existingName.rows.length > 0) {
       return res.status(409).json({ error: "This username is already taken, please use another." });
     }
@@ -54,7 +59,7 @@ router.post("/signup", async (req, res, next) => {
       return res.status(409).json({ error: "This password is already in use, please choose another." });
     }
     const { rows } = await pool.query(
-      "INSERT INTO users (id, name, password, role) VALUES ($1, $2, $3, 'none') RETURNING *",
+      "INSERT INTO users (id, name, username, password, role) VALUES ($1, $2, $2, $3, 'none') RETURNING *",
       [randomUUID(), cleanName, cleanPassword]
     );
     const user = rows[0];

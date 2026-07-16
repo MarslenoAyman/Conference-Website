@@ -31,6 +31,9 @@ const LIMITED_ACCESS = [
   ["Mr Ramy Oncy", "01288471261"],
   ["Mr Ayman Labib", "01224004237"],
   ["Mr Kadry", "01283345629"],
+  ["Mr Weza", "01141826361"],
+  ["Mr Kiro Hazem", "01228763295"],
+  ["Mr Pavly Samir", "01207601856"],
 ];
 
 const INSTRUCTIONS = [
@@ -135,7 +138,8 @@ export async function migrate() {
 const RENAMES = [["Mr Malk Milad", "Mr Mark Ehab"]];
 async function renameAccounts() {
   for (const [oldName, newName] of RENAMES) {
-    await pool.query("UPDATE users SET name = $2 WHERE name = $1", [oldName, newName]);
+    // A seed-level rename changes both the login identity and the display name.
+    await pool.query("UPDATE users SET name = $2, username = $2 WHERE name = $1 OR username = $1", [oldName, newName]);
     await pool.query("UPDATE games SET manager = REPLACE(manager, $1, $2) WHERE manager LIKE '%' || $1 || '%'", [
       oldName,
       newName,
@@ -153,13 +157,18 @@ async function renameAccounts() {
 // accounts are never touched (no password/role changes).
 async function ensureStaff() {
   const seed = [
-    ...FULL_ACCESS.map(([name, phone]) => [name, phone, "full"]),
-    ...LIMITED_ACCESS.map(([name, phone]) => [name, phone, "limited"]),
+    ...FULL_ACCESS.map(([name, cred]) => [name, cred, "full"]),
+    ...LIMITED_ACCESS.map(([name, cred]) => [name, cred, "limited"]),
   ];
-  for (const [name, phone, role] of seed) {
+  for (const [name, cred, role] of seed) {
+    // `cred` is the login password (a phone number). Store it as the phone too,
+    // unless another account already uses that phone (phone is unique) — then
+    // leave phone null; login still works, it matches on username + password.
+    const { rows: taken } = await pool.query("SELECT 1 FROM users WHERE phone = $1 AND name <> $2", [cred, name]);
+    const phone = taken[0] ? null : cred;
     await pool.query(
-      "INSERT INTO users (id, name, phone, password, role) VALUES ($1, $2, $3, $3, $4) ON CONFLICT (name) DO NOTHING",
-      [randomUUID(), name, phone, role]
+      "INSERT INTO users (id, name, username, phone, password, role) VALUES ($1, $2, $2, $3, $4, $5) ON CONFLICT (name) DO NOTHING",
+      [randomUUID(), name, phone, cred, role]
     );
   }
 }
@@ -214,20 +223,8 @@ async function seedIfEmpty() {
     await pool.query("INSERT INTO teams (id, name, color) VALUES ($1, $2, $3)", [randomUUID(), name, color]);
   }
 
-  for (const [name, phone] of FULL_ACCESS) {
-    await pool.query("INSERT INTO users (id, name, phone, password, role) VALUES ($1, $2, $3, $3, 'full')", [
-      randomUUID(),
-      name,
-      phone,
-    ]);
-  }
-  for (const [name, phone] of LIMITED_ACCESS) {
-    await pool.query("INSERT INTO users (id, name, phone, password, role) VALUES ($1, $2, $3, $3, 'limited')", [
-      randomUUID(),
-      name,
-      phone,
-    ]);
-  }
+  // Staff accounts are created (and kept in sync) by ensureStaff(), which runs
+  // on every startup and safely handles the username column + phone collisions.
 
   for (const text of INSTRUCTIONS) {
     await pool.query("INSERT INTO instructions (id, text) VALUES ($1, $2)", [randomUUID(), text]);

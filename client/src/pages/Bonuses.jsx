@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { api } from "../api.js";
 import Alert from "../components/Alert.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 
 export default function Bonuses() {
   const { user, token } = useAuth();
@@ -15,6 +16,9 @@ export default function Bonuses() {
   const [reasons, setReasons] = useState({});
   const [points, setPoints] = useState({});
   const [signs, setSigns] = useState({});
+  const [editingNameId, setEditingNameId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const canEdit = user.role === "full";
   const isServed = user.role === "none";
@@ -76,6 +80,31 @@ export default function Bonuses() {
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
       const { history: freshHistory } = await api.getBonusHistory(token);
       setHistory(freshHistory);
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
+  async function saveName(member) {
+    const name = editName.trim();
+    if (!name || name === member.name) {
+      setEditingNameId(null);
+      return;
+    }
+    try {
+      const { member: updated } = await api.renameBonusMember(token, member.id, name);
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, name: updated.name } : m)));
+      setEditingNameId(null);
+    } catch (err) {
+      setError(tError(err.message));
+    }
+  }
+
+  async function doClearHistory() {
+    setConfirmClear(false);
+    try {
+      await api.clearBonusHistory(token);
+      setHistory([]);
     } catch (err) {
       setError(tError(err.message));
     }
@@ -163,7 +192,43 @@ export default function Bonuses() {
             <div className="bonus-row" key={m.id}>
               <span className="bonus-rank">{idx + 1}</span>
               <div>
-                <div className="bonus-name">{m.name}</div>
+                {editingNameId === m.id ? (
+                  <div className="bonus-name-edit">
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveName(m);
+                        if (e.key === "Escape") setEditingNameId(null);
+                      }}
+                    />
+                    <button className="btn btn-xs btn-primary" onClick={() => saveName(m)}>
+                      {t("common.save")}
+                    </button>
+                    <button className="btn btn-xs" onClick={() => setEditingNameId(null)}>
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bonus-name">
+                    {m.name}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="bonus-edit-name-btn"
+                        title={t("bonuses.editName")}
+                        aria-label={t("bonuses.editName")}
+                        onClick={() => {
+                          setEditingNameId(m.id);
+                          setEditName(m.name);
+                        }}
+                      >
+                        ✎
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="bonus-team">{m.phone}</div>
               </div>
               {canEdit && (
@@ -239,8 +304,15 @@ export default function Bonuses() {
 
       {!loading && (
         <div className="card section-gap">
-          <div className="modal-section-title" style={{ margin: "0 0 10px" }}>
-            {t("bonuses.historyTitle")}
+          <div className="bonus-history-head">
+            <div className="modal-section-title" style={{ margin: 0 }}>
+              {t("bonuses.historyTitle")}
+            </div>
+            {canEdit && history.length > 0 && (
+              <button className="btn btn-sm btn-danger" onClick={() => setConfirmClear(true)}>
+                {t("bonuses.clearHistory")}
+              </button>
+            )}
           </div>
           {history.length === 0 ? (
             <p className="empty-note">{t("bonuses.noHistoryYet")}</p>
@@ -264,6 +336,16 @@ export default function Bonuses() {
             ))
           )}
         </div>
+      )}
+
+      {confirmClear && (
+        <ConfirmModal
+          message={t("bonuses.clearHistoryConfirm")}
+          danger
+          confirmLabel={t("bonuses.clearHistory")}
+          onConfirm={doClearHistory}
+          onCancel={() => setConfirmClear(false)}
+        />
       )}
     </div>
   );

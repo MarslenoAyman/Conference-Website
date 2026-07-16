@@ -42,7 +42,7 @@ export function managerHasName(manager, name) {
 }
 
 // Limited servants who may also edit the Topics section, like full access.
-export const TOPICS_EDITORS = ["Mr George Fathy", "Mr Ramy Oncy"];
+export const TOPICS_EDITORS = ["Mr George Fathy", "Mr Ramy Oncy", "Mr Andrew Amir"];
 export function canEditTopics(user) {
   if (!user) return false;
   if (user.role === "full") return true;

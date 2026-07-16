@@ -1750,6 +1750,46 @@ button {
 }
 .bonus-name {
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bonus-edit-name-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 2px;
+  transition: color 0.15s ease;
+}
+.bonus-edit-name-btn:hover {
+  color: var(--olive);
+}
+.bonus-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.bonus-name-edit input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--card);
+  color: var(--ink);
+  min-width: 120px;
+}
+.bonus-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 .bonus-team {
   font-size: 0.781rem;

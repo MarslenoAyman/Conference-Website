@@ -120,6 +120,9 @@ export const api = {
   adjustBonus: (token, userId, delta, reason) =>
     request(`/bonus/${userId}`, { method: "POST", body: { delta, reason }, token }),
   deleteBonusMember: (token, userId) => request(`/bonus/${userId}`, { method: "DELETE", token }),
+  renameBonusMember: (token, userId, name) =>
+    request(`/bonus/${userId}/name`, { method: "PUT", body: { name }, token }),
+  clearBonusHistory: (token) => request(`/bonus/history`, { method: "DELETE", token }),
 
   getUsers: (token) => request("/users", { token }),
 
