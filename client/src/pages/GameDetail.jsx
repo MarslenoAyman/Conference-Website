@@ -530,7 +530,8 @@ export default function GameDetail() {
             )}
           </div>
 
-          <TopScorers scorers={game.scorers} t={t} />
+          {/* Dodgeball is decided purely by wins/draws/losses — no scorers. */}
+          {game.nameKey !== "dodgeball" && <TopScorers scorers={game.scorers} t={t} />}
         </>
       ) : game.type === "players" ? (
         <>
@@ -778,6 +779,7 @@ export default function GameDetail() {
           match={resultMatch}
           rosters={game.rosters}
           format={game.format}
+          showScorers={game.nameKey !== "dodgeball"}
           onSave={(body) => saveResult(resultMatch.id, body)}
           onClose={() => setResultMatch(null)}
         />
@@ -1964,7 +1966,7 @@ function TopScorers({ scorers, t }) {
   );
 }
 
-function ResultModal({ match, rosters, format, onSave, onClose }) {
+function ResultModal({ match, rosters, format, onSave, onClose, showScorers = true }) {
   const { t, tError } = useLanguage();
   const teamA = match.sideA[0];
   const teamB = match.sideB[0];
@@ -2070,8 +2072,8 @@ function ResultModal({ match, rosters, format, onSave, onClose }) {
         {numField(teamB?.name || "B", scoreB, setScoreB)}
       </div>
 
-      {scorerPicker(playersA, scorersA, setScorersA, teamA?.name || "A")}
-      {scorerPicker(playersB, scorersB, setScorersB, teamB?.name || "B")}
+      {showScorers && scorerPicker(playersA, scorersA, setScorersA, teamA?.name || "A")}
+      {showScorers && scorerPicker(playersB, scorersB, setScorersB, teamB?.name || "B")}
 
       {isLeague && (
         <>
