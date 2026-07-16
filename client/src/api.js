@@ -132,4 +132,5 @@ export const api = {
 
   getNotifications: (token) => request("/notifications", { token }),
   markNotificationsSeen: (token, at) => request("/notifications/seen", { method: "POST", body: { at }, token }),
+  clearNotifications: (token) => request("/notifications", { method: "DELETE", token }),
 };

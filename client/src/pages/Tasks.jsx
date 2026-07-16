@@ -146,11 +146,33 @@ export default function Tasks() {
 
   const finisherTask = finisherTaskId ? tasks.find((tk) => tk.id === finisherTaskId) : null;
 
+  function clearNotifications() {
+    setConfirmState({
+      message: t("tasks.clearNotifsConfirm"),
+      confirmLabel: t("tasks.clearNotifs"),
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          await api.clearNotifications(token);
+        } catch (err) {
+          setError(tError(err.message));
+        }
+      },
+    });
+  }
+
   return (
     <div className="page">
-      <h1 className="page-title">
-        {t("tasks.titleStart")} <em>{t("tasks.titleEm")}</em>
-      </h1>
+      <div className="page-head-row">
+        <h1 className="page-title">
+          {t("tasks.titleStart")} <em>{t("tasks.titleEm")}</em>
+        </h1>
+        {canEdit && (
+          <button className="btn btn-sm" onClick={clearNotifications}>
+            {t("tasks.clearNotifs")}
+          </button>
+        )}
+      </div>
 
       <Alert message={error} onDismiss={() => setError("")} style={{ marginTop: 20 }} />
 

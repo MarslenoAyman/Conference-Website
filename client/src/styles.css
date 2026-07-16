@@ -264,6 +264,16 @@ button {
   line-height: 1.15;
   margin-bottom: 12px;
 }
+.page-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-head-row .page-title {
+  margin-bottom: 0;
+}
 .page-title em {
   font-style: normal;
   color: var(--gold);

@@ -145,6 +145,8 @@ export const translations = {
       noFinishers: "لا أحد بعد.",
       pts: "نقطة",
       launchWarn: "سيبدأ العد التنازلي الآن ويظهر إشعار لكل المستخدمين. هل تريد المتابعة؟",
+      clearNotifs: "مسح الإشعارات",
+      clearNotifsConfirm: "سيتم مسح كل الإشعارات لجميع المستخدمين. هل تريد المتابعة؟",
     },
     games: {
       titleStart: "الألعاب",
@@ -558,6 +560,8 @@ export const translations = {
       noFinishers: "No one yet.",
       pts: "pts",
       launchWarn: "This starts the countdown now and notifies every user. Continue?",
+      clearNotifs: "Clear notifications",
+      clearNotifsConfirm: "This clears every notification for all users. Continue?",
     },
     games: {
       titleStart: "Games",

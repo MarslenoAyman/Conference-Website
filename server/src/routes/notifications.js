@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { pool } from "../db/pool.js";
-import { authenticate } from "../auth.js";
+import { authenticate, requireRole } from "../auth.js";
 
 // Record a site-wide notification. Every signed-in user polls for these and
 // shows new ones as toast cards. kind: 'info' | 'warning'.
@@ -49,6 +49,19 @@ router.post("/seen", async (req, res, next) => {
       "UPDATE users SET notifications_seen_at = GREATEST(COALESCE(notifications_seen_at, to_timestamp(0)), $1) WHERE id = $2",
       [ts.toISOString(), req.user.id]
     );
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Full-access only: purge every queued notification (e.g. leftovers from
+// testing) so they stop popping up for anyone who hasn't seen them yet.
+router.delete("/", requireRole("full"), async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM notifications");
+    // Move everyone's watermark to now so nothing lingering is re-shown.
+    await pool.query("UPDATE users SET notifications_seen_at = now()");
     res.json({ ok: true });
   } catch (err) {
     next(err);
