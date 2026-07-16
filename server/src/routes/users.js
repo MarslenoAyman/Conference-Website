@@ -8,7 +8,7 @@ router.use(authenticate, requireRole("full"));
 router.get("/", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, name, phone, role, team_id, bonus FROM users ORDER BY name"
+      "SELECT id, name, phone, role, team_id, room_id, bonus FROM users ORDER BY name"
     );
     res.json({
       users: rows.map((u) => ({
@@ -17,6 +17,7 @@ router.get("/", async (req, res, next) => {
         phone: u.phone,
         role: u.role,
         teamId: u.team_id,
+        roomId: u.room_id,
         bonus: u.bonus,
       })),
     });

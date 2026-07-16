@@ -105,6 +105,14 @@ export const api = {
     request(`/teams/${teamId}/assign`, { method: "POST", body: { userId }, token }),
   unassign: (token, userId) => request(`/teams/unassign`, { method: "POST", body: { userId }, token }),
 
+  getRooms: (token) => request("/rooms", { token }),
+  addRoom: (token, name, color) => request("/rooms", { method: "POST", body: { name, color }, token }),
+  updateRoom: (token, id, room) => request(`/rooms/${id}`, { method: "PUT", body: room, token }),
+  deleteRoom: (token, id) => request(`/rooms/${id}`, { method: "DELETE", token }),
+  assignToRoom: (token, roomId, userId) =>
+    request(`/rooms/${roomId}/assign`, { method: "POST", body: { userId }, token }),
+  unassignRoom: (token, userId) => request(`/rooms/unassign`, { method: "POST", body: { userId }, token }),
+
   getBonusMembers: (token) => request("/bonus", { token }),
   getBonusHistory: (token) => request("/bonus/history", { token }),
   getMyBonus: (token) => request("/bonus/me", { token }),

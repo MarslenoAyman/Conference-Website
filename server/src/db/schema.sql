@@ -14,6 +14,16 @@ CREATE TABLE IF NOT EXISTS users (
   bonus INTEGER NOT NULL DEFAULT 0
 );
 
+-- Accommodation rooms. Like teams but private: a served member only ever sees
+-- their own room and its members.
+CREATE TABLE IF NOT EXISTS rooms (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#5b6b4a',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS room_id TEXT REFERENCES rooms(id) ON DELETE SET NULL;
+
 ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
 UPDATE users SET password = phone WHERE password IS NULL AND phone IS NOT NULL;

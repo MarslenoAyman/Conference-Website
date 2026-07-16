@@ -134,12 +134,12 @@ button {
   z-index: 10;
 }
 .navbar-inner {
-  max-width: 1120px;
+  max-width: 1280px;
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 28px;
-  padding: var(--space-xs) var(--space-xl);
+  gap: 16px;
+  padding: var(--space-xs) var(--space-lg);
 }
 .brand {
   display: flex;
@@ -168,15 +168,17 @@ button {
 }
 .nav-links {
   display: flex;
-  gap: 2px;
+  gap: 1px;
   flex: 1;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
+  justify-content: center;
 }
-/* Font/padding kept compact so all nav sections fit side by side on laptops. */
+/* Font/padding kept compact so all ten nav sections fit on ONE line on laptops. */
 .nav-link {
-  padding: 7px 10px;
+  padding: 6px 8px;
   border-radius: 999px;
-  font-size: 0.8125rem;
+  font-size: clamp(0.72rem, 0.6rem + 0.42vw, 0.82rem);
   font-weight: 500;
   text-decoration: none;
   color: var(--ink-soft);

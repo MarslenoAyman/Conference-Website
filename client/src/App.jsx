@@ -12,6 +12,7 @@ import Games from "./pages/Games.jsx";
 import Notifications from "./components/Notifications.jsx";
 import GameDetail from "./pages/GameDetail.jsx";
 import Teams from "./pages/Teams.jsx";
+import Rooms from "./pages/Rooms.jsx";
 import Bonuses from "./pages/Bonuses.jsx";
 import Settings from "./pages/Settings.jsx";
 
@@ -95,6 +96,14 @@ export default function App() {
           element={
             <Protected>
               <Teams />
+            </Protected>
+          }
+        />
+        <Route
+          path="/rooms"
+          element={
+            <Protected>
+              <Rooms />
             </Protected>
           }
         />
