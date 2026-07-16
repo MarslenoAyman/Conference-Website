@@ -583,8 +583,11 @@ button {
   width: 100%;
   aspect-ratio: 5 / 7;
   object-fit: cover;
+  display: block;
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  background: var(--card-alt);
 }
 .card-face {
   width: 100%;

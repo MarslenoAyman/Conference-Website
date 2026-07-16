@@ -1,6 +1,10 @@
+import { useState } from "react";
+
 // Drawn, palette-matched "cards" for showcase games (Card Game, Play Station).
 // Each art is a self-contained SVG card face on a transparent tile background.
-// Real photos can replace these later by swapping the SVG for an <img>.
+// A real photo is used automatically when one is dropped into
+// client/public/cards/<key>.jpg (screw, cochina, fifa, pes); otherwise the
+// drawn SVG below is shown, so a missing photo never breaks the card.
 
 function CardFace({ accent, corner, children }) {
   return (
@@ -64,13 +68,20 @@ export const CARD_ART = {
 
 export const CARD_ART_KEYS = ["screw", "cochina", "fifa", "pes", "card"];
 
-// Render a card's art: a real photo when `art` is an image path/URL
-// (e.g. "/cards/fifa.jpg" or "https://…" or a data: URI), otherwise the
-// palette-matched drawn SVG for the given key.
+const PHOTO_KEYS = ["screw", "cochina", "fifa", "pes"];
+
+// Render a card's art. If `art` is an explicit image path/URL it's shown as a
+// photo; if it's one of the known keys we try a dropped-in photo at
+// /cards/<key>.jpg. Either way, a load failure falls back to the drawn SVG, so
+// the cards look good with or without real photos.
 export function CardArt({ art, alt }) {
-  const isImage = typeof art === "string" && /^(https?:|data:|\/)/.test(art);
-  if (isImage) {
-    return <img className="card-photo" src={art} alt={alt || ""} loading="lazy" />;
+  const [failed, setFailed] = useState(false);
+  const isPath = typeof art === "string" && /^(https?:|data:|\/)/.test(art);
+  const photoSrc = isPath ? art : PHOTO_KEYS.includes(art) ? `/cards/${art}.jpg` : null;
+  if (photoSrc && !failed) {
+    return (
+      <img className="card-photo" src={photoSrc} alt={alt || ""} loading="lazy" onError={() => setFailed(true)} />
+    );
   }
   return CARD_ART[art] || CARD_ART.card;
 }
