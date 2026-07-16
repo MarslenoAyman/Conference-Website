@@ -14,6 +14,7 @@ async function allTeamsWithMembers() {
     name: t.name,
     color: t.color,
     points: t.points,
+    manager: t.manager || "",
     members: users
       .filter((u) => u.team_id === t.id)
       .map((u) => ({ id: u.id, name: u.name, role: u.role })),
@@ -28,7 +29,7 @@ async function teamWithMembers(teamId) {
     "SELECT id, name, role FROM users WHERE team_id = $1",
     [teamId]
   );
-  return { id: team.id, name: team.name, color: team.color, points: team.points, members };
+  return { id: team.id, name: team.name, color: team.color, points: team.points, manager: team.manager || "", members };
 }
 
 router.get("/", async (req, res, next) => {
@@ -51,13 +52,12 @@ router.get("/", async (req, res, next) => {
 
 router.post("/", requireRole("full"), async (req, res, next) => {
   try {
-    const { name, color } = req.body || {};
+    const { name, color, manager } = req.body || {};
     if (!name || !name.trim()) return res.status(400).json({ error: "Team name is required." });
-    const { rows } = await pool.query("INSERT INTO teams (id, name, color) VALUES ($1, $2, $3) RETURNING id", [
-      randomUUID(),
-      name.trim(),
-      color || "#5b6b4a",
-    ]);
+    const { rows } = await pool.query(
+      "INSERT INTO teams (id, name, color, manager) VALUES ($1, $2, $3, $4) RETURNING id",
+      [randomUUID(), name.trim(), color || "#5b6b4a", (manager || "").trim()]
+    );
     res.status(201).json({ team: await teamWithMembers(rows[0].id) });
   } catch (err) {
     next(err);
@@ -66,13 +66,19 @@ router.post("/", requireRole("full"), async (req, res, next) => {
 
 router.put("/:id", requireRole("full"), async (req, res, next) => {
   try {
-    const { name, color } = req.body || {};
+    const { name, color, manager } = req.body || {};
     const { rows: existingRows } = await pool.query("SELECT * FROM teams WHERE id = $1", [req.params.id]);
     if (!existingRows[0]) return res.status(404).json({ error: "Team not found." });
     const existing = existingRows[0];
     const nextName = name !== undefined && name.trim() ? name.trim() : existing.name;
     const nextColor = color !== undefined ? color : existing.color;
-    await pool.query("UPDATE teams SET name = $1, color = $2 WHERE id = $3", [nextName, nextColor, req.params.id]);
+    const nextManager = manager !== undefined ? manager.trim() : existing.manager;
+    await pool.query("UPDATE teams SET name = $1, color = $2, manager = $3 WHERE id = $4", [
+      nextName,
+      nextColor,
+      nextManager,
+      req.params.id,
+    ]);
     res.json({ team: await teamWithMembers(req.params.id) });
   } catch (err) {
     next(err);

@@ -19,6 +19,7 @@ export default function TeamEditModal({ team, teams, allUsers, onClose, onSaveDe
   const { t } = useLanguage();
   const [name, setName] = useState(team.name);
   const [color, setColor] = useState(team.color);
+  const [manager, setManager] = useState(team.manager || "");
   const [query, setQuery] = useState("");
 
   const teamNameById = useMemo(() => Object.fromEntries(teams.map((tm) => [tm.id, tm.name])), [teams]);
@@ -33,7 +34,7 @@ export default function TeamEditModal({ team, teams, allUsers, onClose, onSaveDe
 
   function saveDetails() {
     if (!name.trim()) return;
-    onSaveDetails({ name: name.trim(), color });
+    onSaveDetails({ name: name.trim(), color, manager: manager.trim() });
   }
 
   return (
@@ -54,6 +55,10 @@ export default function TeamEditModal({ team, teams, allUsers, onClose, onSaveDe
             />
           ))}
         </div>
+      </div>
+      <div className="field">
+        <label>{t("teams.responsibleLabel")}</label>
+        <input value={manager} onChange={(e) => setManager(e.target.value)} placeholder={t("teams.responsiblePlaceholder")} />
       </div>
       <button className="btn btn-primary btn-sm" onClick={saveDetails}>
         {t("common.save")}

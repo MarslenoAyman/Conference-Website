@@ -30,6 +30,7 @@ const LIMITED_ACCESS = [
   ["Mr Malk Milad", "01141826361"],
   ["Mr Ramy Oncy", "01288471261"],
   ["Mr Ayman Labib", "01224004237"],
+  ["Mr Kadry", "01283345629"],
 ];
 
 const INSTRUCTIONS = [
@@ -88,6 +89,7 @@ const TOPICS = [
 const GAMES = [
   ["كرة القدم", "football", "roster", "league", 1, "Mr Gazo", false, "football"],
   ["الكرة الطائرة", "volleyball", "roster", "league", 1, "", false, "volleyball"],
+  ["كرة الحرق", "dodgeball", "roster", "league", 1, "Mr Malk Milad", false, "dodgeball"],
   ["الشطرنج", "chess", "players", "league", 1, "Mr Weza", false, "chess"],
   ["البلياردو", "billiard", "players", "league", 1, "Mr Marsleno Ayman", false, "billiard"],
   ["تنس الطاولة", "pingpong", "players", "league", 1, "Mr Soliman Hefzy", false, "pingpong"],
@@ -122,7 +124,25 @@ export async function migrate() {
   const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
   await pool.query(schema);
   await seedIfEmpty();
+  await ensureStaff();
   await ensureGames();
+}
+
+// Make sure every defined servant (full/limited) account exists on every
+// startup, so new staff are added to an already-seeded database (local or
+// production) without a reset. Matched by their unique username; existing
+// accounts are never touched (no password/role changes).
+async function ensureStaff() {
+  const seed = [
+    ...FULL_ACCESS.map(([name, phone]) => [name, phone, "full"]),
+    ...LIMITED_ACCESS.map(([name, phone]) => [name, phone, "limited"]),
+  ];
+  for (const [name, phone, role] of seed) {
+    await pool.query(
+      "INSERT INTO users (id, name, phone, password, role) VALUES ($1, $2, $3, $3, $4) ON CONFLICT (name) DO NOTHING",
+      [randomUUID(), name, phone, role]
+    );
+  }
 }
 
 // The full games catalogue is fixed and not user-editable, so we make sure every

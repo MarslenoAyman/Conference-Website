@@ -26,6 +26,7 @@ export default function Teams() {
   const [error, setError] = useState("");
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(PALETTE[0]);
+  const [newManager, setNewManager] = useState("");
   const [editingTeamId, setEditingTeamId] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
 
@@ -49,9 +50,10 @@ export default function Teams() {
     e.preventDefault();
     if (!newName.trim()) return;
     try {
-      const { team } = await api.addTeam(token, newName, newColor);
+      const { team } = await api.addTeam(token, newName, newColor, newManager);
       setTeams((prev) => [...prev, team]);
       setNewName("");
+      setNewManager("");
     } catch (err) {
       setError(tError(err.message));
     }
@@ -140,6 +142,11 @@ export default function Teams() {
                 </div>
               </div>
               <div className="team-body">
+                {team.manager && (
+                  <p className="team-manager">
+                    {t("teams.responsible")}: <strong>{team.manager}</strong>
+                  </p>
+                )}
                 {team.members.length === 0 ? (
                   <div className="empty-note">{t("teams.noMembers")}</div>
                 ) : (
@@ -182,6 +189,11 @@ export default function Teams() {
           <label>{t("teams.createTeamLabel")}</label>
           <div className="add-row">
             <input placeholder={t("teams.teamNamePlaceholder")} value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <input
+              placeholder={t("teams.responsiblePlaceholder")}
+              value={newManager}
+              onChange={(e) => setNewManager(e.target.value)}
+            />
             <div className="swatch-row">
               {PALETTE.map((c) => (
                 <span

@@ -97,7 +97,8 @@ export const api = {
     request(`/games/${gameId}/matches/${matchId}`, { method: "DELETE", token }),
 
   getTeams: (token) => request("/teams", { token }),
-  addTeam: (token, name, color) => request("/teams", { method: "POST", body: { name, color }, token }),
+  addTeam: (token, name, color, manager) =>
+    request("/teams", { method: "POST", body: { name, color, manager }, token }),
   updateTeam: (token, id, team) => request(`/teams/${id}`, { method: "PUT", body: team, token }),
   deleteTeam: (token, id) => request(`/teams/${id}`, { method: "DELETE", token }),
   adjustTeamPoints: (token, id, delta) => request(`/teams/${id}/points`, { method: "POST", body: { delta }, token }),

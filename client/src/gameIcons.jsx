@@ -80,6 +80,12 @@ export const GAME_ICONS = {
       <rect x="6.5" y="15" width="11" height="5" rx="1" />
     </svg>
   ),
+  dodgeball: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a9 9 0 0 1 0 18M4 8.5c3 1.5 13 1.5 16 0M4 15.5c3-1.5 13-1.5 16 0" />
+    </svg>
+  ),
   ball: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5L12 3Z" />
@@ -99,6 +105,7 @@ export const GAME_ICON_COLORS = {
   gamepad: "var(--olive)",
   ring: "var(--maroon)",
   squid: "var(--brick)",
+  dodgeball: "var(--brick)",
   ball: "var(--ink-soft)",
 };
 
@@ -114,6 +121,7 @@ export const GAME_ICON_KEYS = [
   "gamepad",
   "ring",
   "squid",
+  "dodgeball",
   "ball",
 ];
 
@@ -129,5 +137,6 @@ export const GAME_ICON_BADGE_CLASS = {
   gamepad: "icon-badge--olive",
   ring: "icon-badge--maroon",
   squid: "icon-badge--brick",
+  dodgeball: "icon-badge--brick",
   ball: "icon-badge--olive-dark",
 };

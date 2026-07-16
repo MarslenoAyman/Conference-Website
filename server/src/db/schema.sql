@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS teams (
   color TEXT NOT NULL DEFAULT '#5b6b4a',
   points INTEGER NOT NULL DEFAULT 0
 );
+-- The servant (Mr …) responsible for a team, set when the team is created.
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS manager TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,

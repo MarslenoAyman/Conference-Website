@@ -14,6 +14,7 @@ const GAME_ORDER = [
   "squid",
   "football",
   "volleyball",
+  "dodgeball",
   "pingpong",
   "billiard",
   "domino",

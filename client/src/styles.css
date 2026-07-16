@@ -542,6 +542,15 @@ button {
 .game-manager strong {
   color: var(--olive-dark);
 }
+/* Responsible line on a team card — sits between the banner and the members. */
+.team-manager {
+  font-size: 0.844rem;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+.team-manager strong {
+  color: var(--olive-dark);
+}
 
 /* Game detail */
 .game-detail-header {

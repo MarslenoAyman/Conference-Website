@@ -193,7 +193,9 @@ export default function GameDetail() {
     if (!newTeamName.trim()) return;
     try {
       const { rosters } = await api.addGameTeam(token, id, newTeamName, newTeamColor);
-      setGame((prev) => ({ ...prev, rosters }));
+      // Update teamCount too so the League/Cup controls appear immediately
+      // (no page refresh) once there are two or more teams.
+      setGame((prev) => ({ ...prev, rosters, teamCount: rosters.length }));
       setNewTeamName("");
     } catch (err) {
       setError(tError(err.message));
@@ -211,7 +213,7 @@ export default function GameDetail() {
     if (!confirm(t("common.confirmDeleteGeneric"))) return;
     try {
       const { rosters } = await api.deleteGameTeam(token, id, teamId);
-      setGame((prev) => ({ ...prev, rosters }));
+      setGame((prev) => ({ ...prev, rosters, teamCount: rosters.length }));
       setManageTeamId((prev) => (prev === teamId ? null : prev));
     } catch (err) {
       setError(tError(err.message));
