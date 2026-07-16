@@ -24,11 +24,11 @@ export default function RoomEditModal({ room, rooms, allUsers, onClose, onSaveDe
   const roomNameById = useMemo(() => Object.fromEntries(rooms.map((r) => [r.id, r.name])), [rooms]);
   const memberIds = useMemo(() => new Set(room.members.map((m) => m.id)), [room.members]);
 
-  // Only served members can be placed in a room.
+  // Any account — served or servant (staff) — can be placed in a room.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return allUsers
-      .filter((u) => u.role === "none" && !memberIds.has(u.id))
+      .filter((u) => !memberIds.has(u.id))
       .filter((u) => !q || u.name.toLowerCase().includes(q) || (u.phone || "").includes(q));
   }, [allUsers, memberIds, query]);
 
