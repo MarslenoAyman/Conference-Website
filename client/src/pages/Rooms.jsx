@@ -167,9 +167,10 @@ export default function Rooms() {
           <label>{t("rooms.createRoomLabel")}</label>
           <div className="add-row">
             <input
+              inputMode="numeric"
               placeholder={t("rooms.roomNumberPlaceholder")}
               value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) => setNewName(e.target.value.replace(/[^0-9]/g, ""))}
             />
             <div className="swatch-row">
               {PALETTE.map((c) => (

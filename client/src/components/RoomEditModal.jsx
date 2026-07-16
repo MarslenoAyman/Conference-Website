@@ -41,7 +41,7 @@ export default function RoomEditModal({ room, rooms, allUsers, onClose, onSaveDe
     <Modal title={t("rooms.editModalTitle")} onClose={onClose}>
       <div className="field">
         <label>{t("rooms.roomNumber")}</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
+        <input inputMode="numeric" value={name} onChange={(e) => setName(e.target.value.replace(/[^0-9]/g, ""))} />
       </div>
       <div className="field">
         <label>{t("rooms.roomColor")}</label>
