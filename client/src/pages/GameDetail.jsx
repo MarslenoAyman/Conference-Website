@@ -520,7 +520,7 @@ export default function GameDetail() {
               </>
             ) : (
               <>
-                <StandingsTable standings={game.standings} t={t} />
+                <StandingsTable standings={game.standings} t={t} showCards={game.nameKey !== "dodgeball"} />
                 <div style={{ marginTop: 20 }}>
                   {game.matches.map((m) => (
                     <TeamMatchCard key={m.id} match={m} canEdit={canEdit} onEnter={() => setResultMatch(m)} t={t} />
@@ -780,6 +780,7 @@ export default function GameDetail() {
           rosters={game.rosters}
           format={game.format}
           showScorers={game.nameKey !== "dodgeball"}
+          showCards={game.nameKey !== "dodgeball"}
           onSave={(body) => saveResult(resultMatch.id, body)}
           onClose={() => setResultMatch(null)}
         />
@@ -1896,7 +1897,7 @@ function TeamMatchCard({ match, canEdit, onEnter, t }) {
   );
 }
 
-function StandingsTable({ standings, t }) {
+function StandingsTable({ standings, t, showCards = true }) {
   return (
     <div className="standings-table-wrap">
       <table className="standings-table">
@@ -1911,8 +1912,8 @@ function StandingsTable({ standings, t }) {
             <th>{t("gameDetail.colGF")}</th>
             <th>{t("gameDetail.colGA")}</th>
             <th>{t("gameDetail.colGD")}</th>
-            <th>🟨</th>
-            <th>🟥</th>
+            {showCards && <th>🟨</th>}
+            {showCards && <th>🟥</th>}
             <th className="st-pts">{t("gameDetail.colPts")}</th>
           </tr>
         </thead>
@@ -1928,8 +1929,8 @@ function StandingsTable({ standings, t }) {
               <td>{s.gf}</td>
               <td>{s.ga}</td>
               <td>{s.gd > 0 ? `+${s.gd}` : s.gd}</td>
-              <td>{s.yellow}</td>
-              <td>{s.red}</td>
+              {showCards && <td>{s.yellow}</td>}
+              {showCards && <td>{s.red}</td>}
               <td className="st-pts">{s.points}</td>
             </tr>
           ))}
@@ -1966,7 +1967,7 @@ function TopScorers({ scorers, t }) {
   );
 }
 
-function ResultModal({ match, rosters, format, onSave, onClose, showScorers = true }) {
+function ResultModal({ match, rosters, format, onSave, onClose, showScorers = true, showCards = true }) {
   const { t, tError } = useLanguage();
   const teamA = match.sideA[0];
   const teamB = match.sideB[0];
@@ -2075,7 +2076,7 @@ function ResultModal({ match, rosters, format, onSave, onClose, showScorers = tr
       {showScorers && scorerPicker(playersA, scorersA, setScorersA, teamA?.name || "A")}
       {showScorers && scorerPicker(playersB, scorersB, setScorersB, teamB?.name || "B")}
 
-      {isLeague && (
+      {isLeague && showCards && (
         <>
           <div className="modal-section-title">
             {t("gameDetail.yellowCards")} / {t("gameDetail.redCards")}
