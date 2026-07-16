@@ -27,7 +27,7 @@ const LIMITED_ACCESS = [
   ["Mr Andrew Samir", "01202148907"],
   ["Mr Gazo", "01225862929"],
   ["Mr Hady Demian", "01272005256"],
-  ["Mr Mark Ehab", "01141826361"],
+  ["Mr Mark Ehab", "01222757298"],
   ["Mr Ramy Oncy", "01288471261"],
   ["Mr Ayman Labib", "01224004237"],
   ["Mr Kadry", "01283345629"],
@@ -128,8 +128,19 @@ export async function migrate() {
   await pool.query(schema);
   await seedIfEmpty();
   await renameAccounts();
+  await changePasswords();
   await ensureStaff();
   await ensureGames();
+}
+
+// One-off password changes applied on every startup (idempotent — after the
+// first run the account no longer has the old password, so nothing changes).
+// Login is by username, so the username is untouched.
+const PASSWORD_CHANGES = [["Mr Mark Ehab", "01141826361", "01222757298"]];
+async function changePasswords() {
+  for (const [name, oldPw, newPw] of PASSWORD_CHANGES) {
+    await pool.query("UPDATE users SET password = $3 WHERE name = $1 AND password = $2", [name, oldPw, newPw]);
+  }
 }
 
 // One-off account renames applied on every startup (idempotent — after the
