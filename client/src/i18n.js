@@ -845,6 +845,17 @@ export function getT(lang) {
   };
 }
 
+// True when `name` is (one of) a resource's responsible servant(s). A
+// responsible field may name several people joined by & or , — e.g.
+// "Mr Marsleno Ayman & Mr Amir Ashraf". Mirrors the server's managerHasName.
+export function isResponsible(manager, name) {
+  if (!manager || !name) return false;
+  return manager
+    .split(/[&,]/)
+    .map((s) => s.trim().toLowerCase())
+    .includes(String(name).trim().toLowerCase());
+}
+
 // Display name for a game: known (seeded) games translate per theme via their
 // nameKey; user-created games show the literal name they were given.
 export function gameName(game, t) {

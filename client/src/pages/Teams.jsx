@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import { isResponsible } from "../i18n.js";
 import { api } from "../api.js";
 import TeamEditModal from "../components/TeamEditModal.jsx";
 import Alert from "../components/Alert.jsx";
@@ -30,7 +31,11 @@ export default function Teams() {
   const [editingTeamId, setEditingTeamId] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
 
-  const canManage = user.role === "full";
+  const isFull = user.role === "full";
+  const isStaff = user.role === "full" || user.role === "limited";
+  // Full access manages every team; a limited servant manages only the team
+  // they're responsible for. Creating and deleting teams stays full-access only.
+  const canManageTeam = (team) => isFull || (user.role === "limited" && isResponsible(team.manager, user.name));
 
   function load() {
     api
@@ -41,10 +46,10 @@ export default function Teams() {
   useEffect(load, []);
 
   useEffect(() => {
-    if (canManage) {
+    if (isStaff) {
       api.getUsers(token).then((d) => setAllUsers(d.users)).catch(() => {});
     }
-  }, [canManage]);
+  }, [isStaff]);
 
   async function addTeam(e) {
     e.preventDefault();
@@ -157,7 +162,7 @@ export default function Teams() {
                   ))
                 )}
 
-                {canManage && (
+                {canManageTeam(team) && (
                   <>
                     <div className="points-adjust">
                       <button className="round-btn" onClick={() => adjustPoints(team, -1)}>
@@ -172,9 +177,11 @@ export default function Teams() {
                       <button className="btn btn-sm" onClick={() => setEditingTeamId(team.id)}>
                         {t("teams.editTeam")}
                       </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => deleteTeam(team)}>
-                        {t("teams.deleteTeam")}
-                      </button>
+                      {isFull && (
+                        <button className="btn btn-sm btn-danger" onClick={() => deleteTeam(team)}>
+                          {t("teams.deleteTeam")}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -184,7 +191,7 @@ export default function Teams() {
         </div>
       )}
 
-      {canManage && (
+      {isFull && (
         <form className="add-box" onSubmit={addTeam}>
           <label>{t("teams.createTeamLabel")}</label>
           <div className="add-row">

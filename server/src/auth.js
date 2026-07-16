@@ -30,3 +30,13 @@ export function requireRole(...roles) {
     next();
   };
 }
+
+// A "responsible" field can name one person or several joined by & or , (e.g.
+// "Mr Marsleno Ayman & Mr Amir Ashraf"). Returns true if `name` is one of them.
+export function managerHasName(manager, name) {
+  if (!manager || !name) return false;
+  return manager
+    .split(/[&,]/)
+    .map((s) => s.trim().toLowerCase())
+    .includes(String(name).trim().toLowerCase());
+}

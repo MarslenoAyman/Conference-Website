@@ -1,11 +1,26 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { pool } from "../db/pool.js";
-import { authenticate, requireRole } from "../auth.js";
+import { authenticate, requireRole, managerHasName } from "../auth.js";
 import { notify } from "./notifications.js";
 
 const router = Router();
 router.use(authenticate);
+
+// A game's content is editable by any full-access servant, and by a limited
+// servant who is the game's responsible (by name). Everyone else is a viewer.
+async function requireGameEditor(req, res, next) {
+  try {
+    if (req.user.role === "full") return next();
+    if (req.user.role === "limited") {
+      const { rows } = await pool.query("SELECT manager FROM games WHERE id = $1", [req.params.id]);
+      if (rows[0] && managerHasName(rows[0].manager, req.user.name)) return next();
+    }
+    return res.status(403).json({ error: "You can only edit the game you're responsible for." });
+  } catch (err) {
+    next(err);
+  }
+}
 
 function toGame(row) {
   return {
@@ -834,7 +849,7 @@ router.delete("/:id", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.post("/:id/teams", requireRole("full"), async (req, res, next) => {
+router.post("/:id/teams", requireGameEditor, async (req, res, next) => {
   try {
     const { name, color } = req.body || {};
     if (!name || !name.trim()) return res.status(400).json({ error: "Team name is required." });
@@ -851,7 +866,7 @@ router.post("/:id/teams", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.put("/:id/teams/:teamId", requireRole("full"), async (req, res, next) => {
+router.put("/:id/teams/:teamId", requireGameEditor, async (req, res, next) => {
   try {
     const { name, color } = req.body || {};
     const { rows: existingRows } = await pool.query("SELECT * FROM game_teams WHERE id = $1 AND game_id = $2", [
@@ -873,7 +888,7 @@ router.put("/:id/teams/:teamId", requireRole("full"), async (req, res, next) => 
   }
 });
 
-router.delete("/:id/teams/:teamId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/teams/:teamId", requireGameEditor, async (req, res, next) => {
   try {
     const { rowCount } = await pool.query("DELETE FROM game_teams WHERE id = $1 AND game_id = $2", [
       req.params.teamId,
@@ -887,7 +902,7 @@ router.delete("/:id/teams/:teamId", requireRole("full"), async (req, res, next) 
   }
 });
 
-router.post("/:id/roster", requireRole("full"), async (req, res, next) => {
+router.post("/:id/roster", requireGameEditor, async (req, res, next) => {
   try {
     const { teamId, userId } = req.body || {};
     if (!teamId || !userId) return res.status(400).json({ error: "A team and member are required." });
@@ -911,7 +926,7 @@ router.post("/:id/roster", requireRole("full"), async (req, res, next) => {
 
 // Add / remove players in a player-game's pool ("seats"). Changing the pool
 // clears any generated fixtures so the competition is regenerated cleanly.
-router.post("/:id/players", requireRole("full"), async (req, res, next) => {
+router.post("/:id/players", requireGameEditor, async (req, res, next) => {
   try {
     const { userId } = req.body || {};
     if (!userId) return res.status(400).json({ error: "A member is required." });
@@ -928,7 +943,7 @@ router.post("/:id/players", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.delete("/:id/players/:userId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/players/:userId", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM game_players WHERE game_id = $1 AND user_id = $2", [req.params.id, req.params.userId]);
     await resetPlayerFixtures(req.params.id);
@@ -939,7 +954,7 @@ router.delete("/:id/players/:userId", requireRole("full"), async (req, res, next
 });
 
 // Showcase cards (e.g. the Card Game's Screw / Cochina tiles).
-router.post("/:id/cards", requireRole("full"), async (req, res, next) => {
+router.post("/:id/cards", requireGameEditor, async (req, res, next) => {
   try {
     const { title, subtitle, art } = req.body || {};
     if (!title || !title.trim()) return res.status(400).json({ error: "A card title is required." });
@@ -957,7 +972,7 @@ router.post("/:id/cards", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.delete("/:id/cards/:cardId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/cards/:cardId", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM game_cards WHERE game_id = $1 AND id = $2", [req.params.id, req.params.cardId]);
     res.json({ cards: await cardsView(req.params.id) });
@@ -974,7 +989,7 @@ async function assertCard(gameId, cardId) {
   return rows.length > 0;
 }
 
-router.post("/:id/cards/:cardId/entries", requireRole("full"), async (req, res, next) => {
+router.post("/:id/cards/:cardId/entries", requireGameEditor, async (req, res, next) => {
   try {
     if (!(await assertCard(req.params.id, req.params.cardId)))
       return res.status(404).json({ error: "Card not found." });
@@ -999,7 +1014,7 @@ router.post("/:id/cards/:cardId/entries", requireRole("full"), async (req, res, 
   }
 });
 
-router.delete("/:id/cards/:cardId/entries/:pairId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/cards/:cardId/entries/:pairId", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM game_pairs WHERE game_id = $1 AND card_id = $2 AND id = $3", [
       req.params.id,
@@ -1015,7 +1030,7 @@ router.delete("/:id/cards/:cardId/entries/:pairId", requireRole("full"), async (
 });
 
 // Generate a Play Station card's League or Cup over its own entries.
-router.post("/:id/cards/:cardId/generate", requireRole("full"), async (req, res, next) => {
+router.post("/:id/cards/:cardId/generate", requireGameEditor, async (req, res, next) => {
   try {
     if (!(await assertCard(req.params.id, req.params.cardId)))
       return res.status(404).json({ error: "Card not found." });
@@ -1038,7 +1053,7 @@ router.post("/:id/cards/:cardId/generate", requireRole("full"), async (req, res,
 });
 
 // Survival games (Squid Game): eliminate / revive a player, or reset the day.
-router.put("/:id/survivors/:userId", requireRole("full"), async (req, res, next) => {
+router.put("/:id/survivors/:userId", requireGameEditor, async (req, res, next) => {
   try {
     const eliminated = !!req.body?.eliminated;
     await pool.query("UPDATE game_players SET eliminated = $1 WHERE game_id = $2 AND user_id = $3", [
@@ -1052,7 +1067,7 @@ router.put("/:id/survivors/:userId", requireRole("full"), async (req, res, next)
   }
 });
 
-router.post("/:id/survivors/reset", requireRole("full"), async (req, res, next) => {
+router.post("/:id/survivors/reset", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("UPDATE game_players SET eliminated = false WHERE game_id = $1", [req.params.id]);
     res.json({ players: await survivalPlayers(req.params.id) });
@@ -1062,7 +1077,7 @@ router.post("/:id/survivors/reset", requireRole("full"), async (req, res, next) 
 });
 
 // ---- Royal Rumble: the ring (served members chosen from their teams) ----
-router.post("/:id/ring", requireRole("full"), async (req, res, next) => {
+router.post("/:id/ring", requireGameEditor, async (req, res, next) => {
   try {
     const { userId } = req.body || {};
     if (!userId) return res.status(400).json({ error: "A member is required." });
@@ -1086,7 +1101,7 @@ router.post("/:id/ring", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.delete("/:id/ring/:userId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/ring/:userId", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM game_rumble_players WHERE game_id = $1 AND user_id = $2", [
       req.params.id,
@@ -1099,7 +1114,7 @@ router.delete("/:id/ring/:userId", requireRole("full"), async (req, res, next) =
 });
 
 // Eliminate a ring member (they cannot rejoin until the ring is reset).
-router.put("/:id/ring/:userId", requireRole("full"), async (req, res, next) => {
+router.put("/:id/ring/:userId", requireGameEditor, async (req, res, next) => {
   try {
     const eliminated = !!req.body?.eliminated;
     await pool.query("UPDATE game_rumble_players SET eliminated = $1 WHERE game_id = $2 AND user_id = $3", [
@@ -1114,7 +1129,7 @@ router.put("/:id/ring/:userId", requireRole("full"), async (req, res, next) => {
 });
 
 // Reset the ring: revive every eliminated member so they can play again.
-router.post("/:id/ring/reset", requireRole("full"), async (req, res, next) => {
+router.post("/:id/ring/reset", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("UPDATE game_rumble_players SET eliminated = false WHERE game_id = $1", [req.params.id]);
     res.json({ rumbleTeams: await rumbleRoster(req.params.id) });
@@ -1124,7 +1139,7 @@ router.post("/:id/ring/reset", requireRole("full"), async (req, res, next) => {
 });
 
 // ---- Royal Rumble: game tasks ----
-router.post("/:id/tasks", requireRole("full"), async (req, res, next) => {
+router.post("/:id/tasks", requireGameEditor, async (req, res, next) => {
   try {
     const { title, instructions, points, durationSeconds } = req.body || {};
     if (!title || !title.trim()) return res.status(400).json({ error: "A task title is required." });
@@ -1145,7 +1160,7 @@ router.post("/:id/tasks", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.delete("/:id/tasks/:taskId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/tasks/:taskId", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM game_tasks WHERE game_id = $1 AND id = $2", [req.params.id, req.params.taskId]);
     res.json({ tasks: await rumbleTasks(req.params.id) });
@@ -1154,7 +1169,7 @@ router.delete("/:id/tasks/:taskId", requireRole("full"), async (req, res, next) 
   }
 });
 
-router.post("/:id/tasks/:taskId/launch", requireRole("full"), async (req, res, next) => {
+router.post("/:id/tasks/:taskId/launch", requireGameEditor, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       "UPDATE game_tasks SET launched_at = now() WHERE game_id = $1 AND id = $2 RETURNING title",
@@ -1170,7 +1185,7 @@ router.post("/:id/tasks/:taskId/launch", requireRole("full"), async (req, res, n
 });
 
 // Award a task's points to a ring team (adds to that team's global points).
-router.post("/:id/tasks/:taskId/award", requireRole("full"), async (req, res, next) => {
+router.post("/:id/tasks/:taskId/award", requireGameEditor, async (req, res, next) => {
   try {
     const { teamId } = req.body || {};
     if (!teamId) return res.status(400).json({ error: "A team is required." });
@@ -1192,7 +1207,7 @@ router.post("/:id/tasks/:taskId/award", requireRole("full"), async (req, res, ne
 });
 
 // Auto-build League or Cup fixtures for a roster (team) or player game.
-router.post("/:id/generate", requireRole("full"), async (req, res, next) => {
+router.post("/:id/generate", requireGameEditor, async (req, res, next) => {
   try {
     const { format } = req.body || {};
     if (format !== "league" && format !== "cup") {
@@ -1250,7 +1265,7 @@ router.post("/:id/generate", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.delete("/:id/roster/:userId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/roster/:userId", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM game_rosters WHERE game_id = $1 AND user_id = $2", [
       req.params.id,
@@ -1262,7 +1277,7 @@ router.delete("/:id/roster/:userId", requireRole("full"), async (req, res, next)
   }
 });
 
-router.post("/:id/matches", requireRole("full"), async (req, res, next) => {
+router.post("/:id/matches", requireGameEditor, async (req, res, next) => {
   try {
     const { round, players } = req.body || {};
     if (!Array.isArray(players) || players.length < 2) {
@@ -1295,7 +1310,7 @@ router.post("/:id/matches", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.put("/:id/matches/:matchId", requireRole("full"), async (req, res, next) => {
+router.put("/:id/matches/:matchId", requireGameEditor, async (req, res, next) => {
   try {
     const { rows: gameRows } = await pool.query("SELECT type, format FROM games WHERE id = $1", [req.params.id]);
     if (!gameRows[0]) return res.status(404).json({ error: "Game not found." });
@@ -1442,7 +1457,7 @@ async function saveRosterResult(req, res, game) {
   return res.json(await withScorers(gameId, game.format));
 }
 
-router.delete("/:id/matches/:matchId", requireRole("full"), async (req, res, next) => {
+router.delete("/:id/matches/:matchId", requireGameEditor, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM matches WHERE id = $1 AND game_id = $2", [req.params.matchId, req.params.id]);
     const { rows: gameRows } = await pool.query("SELECT format FROM games WHERE id = $1", [req.params.id]);

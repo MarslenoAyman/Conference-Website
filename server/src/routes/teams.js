@@ -1,10 +1,27 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { pool } from "../db/pool.js";
-import { authenticate, requireRole } from "../auth.js";
+import { authenticate, requireRole, managerHasName } from "../auth.js";
 
 const router = Router();
 router.use(authenticate);
+
+// A team is editable by any full-access servant, and by the limited servant who
+// is that team's responsible (by name). Everyone else is a viewer.
+async function isTeamEditor(user, teamId) {
+  if (user.role === "full") return true;
+  if (user.role !== "limited" || !teamId) return false;
+  const { rows } = await pool.query("SELECT manager FROM teams WHERE id = $1", [teamId]);
+  return !!rows[0] && managerHasName(rows[0].manager, user.name);
+}
+async function requireTeamEditor(req, res, next) {
+  try {
+    if (await isTeamEditor(req.user, req.params.id)) return next();
+    return res.status(403).json({ error: "You can only edit the team you're responsible for." });
+  } catch (err) {
+    next(err);
+  }
+}
 
 async function allTeamsWithMembers() {
   const { rows: teams } = await pool.query("SELECT * FROM teams ORDER BY name");
@@ -64,7 +81,7 @@ router.post("/", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.put("/:id", requireRole("full"), async (req, res, next) => {
+router.put("/:id", requireTeamEditor, async (req, res, next) => {
   try {
     const { name, color, manager } = req.body || {};
     const { rows: existingRows } = await pool.query("SELECT * FROM teams WHERE id = $1", [req.params.id]);
@@ -95,7 +112,7 @@ router.delete("/:id", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.post("/:id/points", requireRole("full"), async (req, res, next) => {
+router.post("/:id/points", requireTeamEditor, async (req, res, next) => {
   try {
     const change = Number((req.body || {}).delta);
     if (!Number.isFinite(change)) return res.status(400).json({ error: "A numeric point change is required." });
@@ -110,7 +127,7 @@ router.post("/:id/points", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.post("/:id/assign", requireRole("full"), async (req, res, next) => {
+router.post("/:id/assign", requireTeamEditor, async (req, res, next) => {
   try {
     const { userId } = req.body || {};
     if (!userId) return res.status(400).json({ error: "A member is required." });
@@ -127,12 +144,17 @@ router.post("/:id/assign", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.post("/unassign", requireRole("full"), async (req, res, next) => {
+router.post("/unassign", requireRole("full", "limited"), async (req, res, next) => {
   try {
     const { userId } = req.body || {};
     if (!userId) return res.status(400).json({ error: "A member is required." });
-    const { rowCount } = await pool.query("UPDATE users SET team_id = NULL WHERE id = $1", [userId]);
-    if (rowCount === 0) return res.status(404).json({ error: "Member not found." });
+    // A limited servant may only remove members from the team they're responsible for.
+    const { rows: target } = await pool.query("SELECT team_id FROM users WHERE id = $1", [userId]);
+    if (!target[0]) return res.status(404).json({ error: "Member not found." });
+    if (!(await isTeamEditor(req.user, target[0].team_id))) {
+      return res.status(403).json({ error: "You can only edit the team you're responsible for." });
+    }
+    await pool.query("UPDATE users SET team_id = NULL WHERE id = $1", [userId]);
     res.json({ ok: true });
   } catch (err) {
     next(err);

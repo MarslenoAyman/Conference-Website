@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
-import { gameName } from "../i18n.js";
+import { gameName, isResponsible } from "../i18n.js";
 import { api } from "../api.js";
 import { GAME_ICONS, GAME_ICON_COLORS } from "../gameIcons.jsx";
 import { CARD_ART, CARD_ART_KEYS, CardArt } from "../cardArt.jsx";
@@ -40,12 +40,16 @@ export default function GameDetail() {
   const [resultMatch, setResultMatch] = useState(null);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
 
-  const canEdit = user.role === "full";
+  const isStaff = user.role === "full" || user.role === "limited";
+  // Full access edits every game; a limited servant edits only the game they're
+  // the responsible for. Everyone else is a viewer.
+  const canEdit =
+    !!game && (user.role === "full" || (user.role === "limited" && isResponsible(game.manager, user.name)));
 
   function load() {
     setLoading(true);
     const calls = [api.getGame(token, id)];
-    if (canEdit) calls.push(api.getUsers(token));
+    if (isStaff) calls.push(api.getUsers(token));
     Promise.all(calls)
       .then(([g, usersRes]) => {
         setGame(g.game);
