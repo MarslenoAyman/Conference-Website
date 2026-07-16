@@ -1,10 +1,16 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { pool } from "../db/pool.js";
-import { authenticate, requireRole } from "../auth.js";
+import { authenticate, canEditTopics } from "../auth.js";
 
 const router = Router();
 router.use(authenticate);
+
+// Full access, plus the specific limited servants allow-listed for Topics.
+function requireTopicsEditor(req, res, next) {
+  if (canEditTopics(req.user)) return next();
+  return res.status(403).json({ error: "You don't have access to edit topics." });
+}
 
 router.get("/", async (req, res, next) => {
   try {
@@ -15,7 +21,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.post("/", requireRole("full"), async (req, res, next) => {
+router.post("/", requireTopicsEditor, async (req, res, next) => {
   try {
     const { title, speaker, description } = req.body || {};
     if (!title || !title.trim()) return res.status(400).json({ error: "Topic title is required." });
@@ -29,7 +35,7 @@ router.post("/", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.put("/:id", requireRole("full"), async (req, res, next) => {
+router.put("/:id", requireTopicsEditor, async (req, res, next) => {
   try {
     const { title, speaker, description } = req.body || {};
     const { rows: existingRows } = await pool.query("SELECT * FROM topics WHERE id = $1", [req.params.id]);
@@ -48,7 +54,7 @@ router.put("/:id", requireRole("full"), async (req, res, next) => {
   }
 });
 
-router.delete("/:id", requireRole("full"), async (req, res, next) => {
+router.delete("/:id", requireTopicsEditor, async (req, res, next) => {
   try {
     const { rowCount } = await pool.query("DELETE FROM topics WHERE id = $1", [req.params.id]);
     if (rowCount === 0) return res.status(404).json({ error: "Topic not found." });

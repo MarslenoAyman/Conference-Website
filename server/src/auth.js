@@ -40,3 +40,14 @@ export function managerHasName(manager, name) {
     .map((s) => s.trim().toLowerCase())
     .includes(String(name).trim().toLowerCase());
 }
+
+// Limited servants who may also edit the Topics section, like full access.
+export const TOPICS_EDITORS = ["Mr George Fathy", "Mr Ramy Oncy"];
+export function canEditTopics(user) {
+  if (!user) return false;
+  if (user.role === "full") return true;
+  return (
+    user.role === "limited" &&
+    TOPICS_EDITORS.map((n) => n.toLowerCase()).includes(String(user.name || "").trim().toLowerCase())
+  );
+}

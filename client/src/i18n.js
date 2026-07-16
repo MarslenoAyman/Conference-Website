@@ -856,6 +856,17 @@ export function isResponsible(manager, name) {
     .includes(String(name).trim().toLowerCase());
 }
 
+// Limited servants allow-listed to edit the Topics section (mirrors the server).
+export const TOPICS_EDITORS = ["Mr George Fathy", "Mr Ramy Oncy"];
+export function canEditTopics(user) {
+  if (!user) return false;
+  if (user.role === "full") return true;
+  return (
+    user.role === "limited" &&
+    TOPICS_EDITORS.map((n) => n.toLowerCase()).includes(String(user.name || "").trim().toLowerCase())
+  );
+}
+
 // Display name for a game: known (seeded) games translate per theme via their
 // nameKey; user-created games show the literal name they were given.
 export function gameName(game, t) {

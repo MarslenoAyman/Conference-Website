@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import { canEditTopics } from "../i18n.js";
 import { api } from "../api.js";
 import Alert from "../components/Alert.jsx";
 
@@ -16,7 +17,7 @@ export default function Topics() {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(empty);
 
-  const canEdit = user.role === "full";
+  const canEdit = canEditTopics(user);
 
   function load() {
     api.getTopics(token).then((d) => setTopics(d.topics)).finally(() => setLoading(false));

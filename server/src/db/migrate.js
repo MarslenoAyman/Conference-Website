@@ -27,7 +27,7 @@ const LIMITED_ACCESS = [
   ["Mr Andrew Samir", "01202148907"],
   ["Mr Gazo", "01225862929"],
   ["Mr Hady Demian", "01272005256"],
-  ["Mr Malk Milad", "01141826361"],
+  ["Mr Mark Ehab", "01141826361"],
   ["Mr Ramy Oncy", "01288471261"],
   ["Mr Ayman Labib", "01224004237"],
   ["Mr Kadry", "01283345629"],
@@ -89,7 +89,7 @@ const TOPICS = [
 const GAMES = [
   ["كرة القدم", "football", "roster", "league", 1, "Mr Gazo", false, "football"],
   ["الكرة الطائرة", "volleyball", "roster", "league", 1, "", false, "volleyball"],
-  ["كرة الحرق", "dodgeball", "roster", "league", 1, "Mr Malk Milad", false, "dodgeball"],
+  ["كرة الحرق", "dodgeball", "roster", "league", 1, "Mr Mark Ehab", false, "dodgeball"],
   ["الشطرنج", "chess", "players", "league", 1, "Mr Weza", false, "chess"],
   ["البلياردو", "billiard", "players", "league", 1, "Mr Marsleno Ayman", false, "billiard"],
   ["تنس الطاولة", "pingpong", "players", "league", 1, "Mr Soliman Hefzy", false, "pingpong"],
@@ -124,8 +124,27 @@ export async function migrate() {
   const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
   await pool.query(schema);
   await seedIfEmpty();
+  await renameAccounts();
   await ensureStaff();
   await ensureGames();
+}
+
+// One-off account renames applied on every startup (idempotent — after the
+// first run the old name no longer exists, so nothing changes). Also updates
+// any game/team where the old name is the responsible.
+const RENAMES = [["Mr Malk Milad", "Mr Mark Ehab"]];
+async function renameAccounts() {
+  for (const [oldName, newName] of RENAMES) {
+    await pool.query("UPDATE users SET name = $2 WHERE name = $1", [oldName, newName]);
+    await pool.query("UPDATE games SET manager = REPLACE(manager, $1, $2) WHERE manager LIKE '%' || $1 || '%'", [
+      oldName,
+      newName,
+    ]);
+    await pool.query("UPDATE teams SET manager = REPLACE(manager, $1, $2) WHERE manager LIKE '%' || $1 || '%'", [
+      oldName,
+      newName,
+    ]);
+  }
 }
 
 // Make sure every defined servant (full/limited) account exists on every
